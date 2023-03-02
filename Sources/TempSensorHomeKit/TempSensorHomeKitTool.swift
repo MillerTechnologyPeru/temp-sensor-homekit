@@ -64,6 +64,7 @@ struct TempSensorHomeKitTool: ParsableCommand {
                     controller.printPairingInstructions()
                     Self.controller = controller
                 }
+                try await Self.controller.scan()
             }
             catch {
                 fatalError("\(error)")

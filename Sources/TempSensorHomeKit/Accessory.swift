@@ -11,15 +11,28 @@ import GATT
 import HAP
 import CoreSensor
 
-final class SensorBridgeAccessory: HAP.Accessory {
+final class GESensorAccessory: HAP.Accessory.Thermometer {
     
-    init(info: HAP.Service.Info) {
+    let peripheral: NativeCentral.Peripheral
+    
+    init(peripheral: NativeCentral.Peripheral, advertisement: GESensor) {
+        self.peripheral = peripheral
+        let info = Service.Info.Info(
+            name: "GE Sensor",
+            serialNumber: peripheral.description,
+            manufacturer: "GE",
+            model: "\(advertisement.model)",
+            firmwareRevision: "\(advertisement.version)"
+        )
         super.init(
             info: info,
-            type: .bridge,
-            services: [
-                
-            ]
+            additionalServices: []
         )
+        update(advertisement: advertisement)
+    }
+    
+    func update(advertisement: GESensor) {
+        self.reachable = true
+        self.temperatureSensor.currentTemperature.value = advertisement.temperatureCelcius
     }
 }

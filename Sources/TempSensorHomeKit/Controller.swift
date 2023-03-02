@@ -53,8 +53,24 @@ final class SensorController {
     
     // MARK: - Methods
     
+    @MainActor
     func scan() async throws {
-        
+        let stream = try await central.scan()
+        var peripheralAccessories = [NativeCentral.Peripheral: HAP.Accessory]()
+        for try await scanResult in stream {
+            if let sensor = GESensor(advertisement: scanResult.advertisementData) {
+                log?("Found sensor: \(sensor)")
+                if let accessory = peripheralAccessories[scanResult.peripheral] as? GESensorAccessory {
+                    accessory.update(advertisement: sensor)
+                } else {
+                    let newAccessory = GESensorAccessory(peripheral: scanResult.peripheral, advertisement: sensor)
+                    peripheralAccessories[scanResult.peripheral] = newAccessory
+                    self.hapDevice.addAccessories([newAccessory])
+                }
+            } else {
+                continue
+            }
+        }
     }
 }
 

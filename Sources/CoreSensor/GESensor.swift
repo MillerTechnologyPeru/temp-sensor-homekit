@@ -63,7 +63,7 @@ public extension GESensor {
     static var companyIdentifier: Bluetooth.CompanyIdentifier { 473 }
 }
 
-internal extension GESensor {
+public extension GESensor {
     
     var batteryVoltage: Float {
         1.0 + (Float(battery) / 100)
