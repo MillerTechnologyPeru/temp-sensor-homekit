@@ -1,0 +1,18 @@
+name: Swift
+
+on: [push]
+
+jobs:
+
+    macOS:
+        name: macOS
+        runs-on: macOS-latest
+        steps:
+        - name: Checkout
+          uses: actions/checkout@v1
+        - name: Swift Version
+          run: swift --version
+        - name: Build (Debug)
+          run: swift build -c debug
+        - name: Build (Release)
+          run: swift build -c release
