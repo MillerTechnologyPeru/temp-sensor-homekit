@@ -17,7 +17,7 @@ final class CoreSensorTests: XCTestCase {
         
         let data = GAPManufacturerSpecificData(
             companyIdentifier: 473,
-            additionalData: Data([0x01, 0x01, 0xE6, 0x00, 0xB2, 0x03, 0xE8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xCC, 0x12, 0xD7, 0xA7])
+            additionalData: Data([0x01, 0x01, 0xBE, 0x00, 0xBB, 0x02, 0xAB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xC3, 0x7E, 0x8B, 0x53])
         )
         
         guard let sensor = GESensor(manufacturerData: data) else {
@@ -27,19 +27,19 @@ final class CoreSensorTests: XCTestCase {
         
         XCTAssertEqual(sensor.model, 1)
         XCTAssertEqual(sensor.version, 1)
-        XCTAssertEqual(sensor.battery, 230)
-        XCTAssertEqual(sensor.temperature, 178)
-        XCTAssertEqual(sensor.humidity, 1000)
-        XCTAssertEqual(sensor.checksum, 0xCC12D7A7)
-        XCTAssertEqual(sensor.batteryVoltage, 3.3)
-        XCTAssertEqual(sensor.batteryLevel, 100.0)
-        XCTAssertEqual(sensor.temperatureCelcius, 17.8)
-        XCTAssertEqual(sensor.humidityPercentage, 100.0)
+        XCTAssertEqual(sensor.battery, 190)
+        XCTAssertEqual(sensor.temperature, 187)
+        XCTAssertEqual(sensor.humidity, 683)
+        XCTAssertEqual(sensor.checksum, 3279850323)
+        XCTAssertEqual(sensor.batteryVoltage, 2.9)
+        XCTAssertEqual(sensor.batteryLevel, 87.87879)
+        XCTAssertEqual(sensor.temperatureCelcius, 18.7)
+        XCTAssertEqual(sensor.humidityPercentage, 68.3)
         
         XCTAssertEqual(sensor.read(), [
-            .batteryLevel(100.0),
-            .temperature(17.8),
-            .humidity(100.0)
+            .batteryLevel(87.87879),
+            .temperature(18.7),
+            .humidity(68.3)
         ])
     }
 }
