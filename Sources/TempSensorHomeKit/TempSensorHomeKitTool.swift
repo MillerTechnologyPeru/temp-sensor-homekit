@@ -13,6 +13,8 @@ import Dispatch
 import Bluetooth
 import GATT
 import CoreSensor
+import HAP
+import ArgumentParser
 
 #if os(Linux)
 typealias LinuxCentral = GATTCentral<BluetoothLinux.HostController, BluetoothLinux.L2CAPSocket>
@@ -27,14 +29,41 @@ typealias NativePeripheral = DarwinPeripheral
 #endif
 
 @main
-struct TempSensorHomeKit {
+struct TempSensorHomeKitTool: ParsableCommand {
     
-    static func main() {
+    static let configuration = CommandConfiguration(
+        abstract: "A deamon for exposing Bluetooth temperature sensors to HomeKit",
+        version: "1.0.0"
+    )
+    
+    @Option(help: "The name of the configuration file.")
+    var file: String = "configuration.json"
+    
+    @Option(help: "The HomeKit setup code.")
+    var setupCode: String?
+    
+    @Option(help: "The port of the HAP server.")
+    var port: UInt = 8000
+    
+    private static var controller: SensorController!
+    
+    func run() throws {
         
         // start async code
         Task {
             do {
-                try await start()
+                let central = try await Self.loadBluetooth()
+                try await MainActor.run {
+                    let controller = try SensorController(
+                        fileName: file,
+                        setupCode: setupCode.map { .override($0) } ?? .random,
+                        port: port,
+                        central: central
+                    )
+                    controller.log = { print($0) }
+                    controller.printPairingInstructions()
+                    Self.controller = controller
+                }
             }
             catch {
                 fatalError("\(error)")
@@ -42,10 +71,10 @@ struct TempSensorHomeKit {
         }
         
         // run main loop
-        RunLoop.current.run()
+        RunLoop.main.run()
     }
     
-    private static func start() async throws {
+    private static func loadBluetooth() async throws -> NativeCentral {
         
         #if os(Linux)
         var hostController: HostController! = await HostController.default
@@ -89,13 +118,6 @@ struct TempSensorHomeKit {
         try await central.waitPowerOn()
         #endif
         
-        // start scanning
-        let stream = try await central.scan()
-        for try await scanResult in stream {
-            guard let sensor = GESensor(advertisement: scanResult.advertisementData) else {
-                continue
-            }
-            dump(sensor)
-        }
+        return central
     }
 }

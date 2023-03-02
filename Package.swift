@@ -6,10 +6,7 @@ import PackageDescription
 let package = Package(
     name: "temp-sensor-homekit",
     platforms: [
-        .macOS(.v10_15),
-        .iOS(.v13),
-        .watchOS(.v6),
-        .tvOS(.v13),
+        .macOS(.v11),
     ],
     products: [
         .executable(
@@ -40,6 +37,14 @@ let package = Package(
             name: "TempSensorHomeKit",
             dependencies: [
                 "CoreSensor",
+                .product(
+                    name: "HAP",
+                    package: "HAP"
+                ),
+                .product(
+                    name: "ArgumentParser",
+                    package: "swift-argument-parser"
+                ),
                 .product(
                     name: "Bluetooth",
                     package: "Bluetooth"
