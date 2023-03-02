@@ -15,6 +15,12 @@ final class GESensorAccessory: HAP.Accessory.Thermometer {
     
     let peripheral: NativeCentral.Peripheral
     
+    //let bridgeState = Service.BridgingState()
+    
+    let humidity = HAP.Service.HumiditySensor()
+    
+    let battery = BatteryService()
+    
     init(peripheral: NativeCentral.Peripheral, advertisement: GESensor) {
         self.peripheral = peripheral
         let info = Service.Info.Info(
@@ -26,13 +32,51 @@ final class GESensorAccessory: HAP.Accessory.Thermometer {
         )
         super.init(
             info: info,
-            additionalServices: []
+            additionalServices: [
+                //bridgeState,
+                humidity,
+                battery
+            ]
         )
-        update(advertisement: advertisement)
+        //self.bridgeState.accessoryIdentifier.value = peripheral.description
+        self.update(advertisement: advertisement)
     }
     
     func update(advertisement: GESensor) {
         self.reachable = true
+        self.battery.batteryVoltage.value = advertisement.batteryVoltage
+        self.battery.batteryLevel?.value = UInt8(advertisement.batteryLevel.rounded())
+        self.battery.statusLowBattery.value = advertisement.batteryLevel < 25 ? .batteryLow : .batteryNormal
         self.temperatureSensor.currentTemperature.value = advertisement.temperatureCelcius
+        self.humidity.currentRelativeHumidity.value = advertisement.humidityPercentage
+    }
+}
+
+extension GESensorAccessory {
+    
+    final class BatteryService: HAP.Service.Battery {
+        
+        let batteryVoltage = GenericCharacteristic<Float>(
+            type: .custom(UUID(uuidString: "5C7D8287-D288-4F4D-BB4A-161A83A99752")!),
+            value: 3.3,
+            permissions: [.read, .events],
+            description: "Battery voltage",
+            format: .float,
+            unit: .none
+        )
+        
+        init() {
+            let name = PredefinedCharacteristic.name("Battery")
+            let batteryLevel = PredefinedCharacteristic.batteryLevel()
+            let chargingState = PredefinedCharacteristic.chargingState()
+            super.init(characteristics: [
+                AnyCharacteristic(name),
+                AnyCharacteristic(batteryLevel),
+                AnyCharacteristic(chargingState),
+                AnyCharacteristic(batteryVoltage)
+            ])
+            self.statusLowBattery.value = .batteryNormal
+            self.chargingState?.value = .notChargeable
+        }
     }
 }
