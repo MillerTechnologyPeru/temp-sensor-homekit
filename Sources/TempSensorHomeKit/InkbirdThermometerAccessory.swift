@@ -17,6 +17,8 @@ final class InkbirdThermometerAccessory: HAP.Accessory.Thermometer, SensorAccess
     
     let peripheral: NativeCentral.Peripheral
     
+    private(set) var lastSeen: Date = Date()
+    
     //let bridgeState = Service.BridgingState()
     
     let humidity = HAP.Service.HumiditySensor()
@@ -45,6 +47,7 @@ final class InkbirdThermometerAccessory: HAP.Accessory.Thermometer, SensorAccess
     }
     
     func update(advertisement: InkbirdAdvertisement.Thermometer) {
+        self.lastSeen = Date()
         self.reachable = true
         self.battery.batteryLevel?.value = advertisement.manufacturingData.batteryLevel.rawValue
         self.battery.statusLowBattery.value = advertisement.manufacturingData.batteryLevel.rawValue < 25 ? .batteryLow : .batteryNormal

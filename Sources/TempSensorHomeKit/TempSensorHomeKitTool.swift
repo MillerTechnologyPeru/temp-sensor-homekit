@@ -54,19 +54,26 @@ struct TempSensorHomeKitTool: ParsableCommand {
             do {
                 let central = try await Self.loadBluetooth()
                 let serialNumber: String
+                let model: String
                 #if os(Linux)
                 let address = try await central.hostController.readDeviceAddress()
                 serialNumber = address.rawValue
+                model = "Linux"
                 #elseif os(macOS)
-                serialNumber = Host.current().address ?? "1234"
+                let host = Host.current()
+                serialNumber = ((host.localizedName ?? host.name) ?? host.address) ?? "1234"
+                model = getModelIdentifier() ?? "Macbook Pro"
                 #endif
+                let timeout: TimeInterval = 60 * 10
                 try await MainActor.run {
                     let controller = try SensorBridgeController(
                         fileName: file,
                         setupCode: setupCode.map { .override($0) } ?? .random,
                         port: port,
                         central: central,
-                        serialNumber: serialNumber
+                        serialNumber: serialNumber,
+                        model: model,
+                        timeout: timeout
                     )
                     controller.log = { print($0) }
                     controller.printPairingInstructions()

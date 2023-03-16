@@ -13,6 +13,7 @@ import CoreSensor
 import Govee
 import Inkbird
 
+@MainActor
 final class SensorBridgeController {
     
     // MARK: - Properties
@@ -25,6 +26,8 @@ final class SensorBridgeController {
     
     private let central: NativeCentral
     
+    private let timeout: TimeInterval
+    
     private var accessories = [NativeCentral.Peripheral: HAP.Accessory]()
     
     // MARK: - Initialization
@@ -34,13 +37,16 @@ final class SensorBridgeController {
         setupCode: HAP.Device.SetupCode,
         port: UInt,
         central: NativeCentral,
-        serialNumber: String
+        serialNumber: String,
+        model: String,
+        timeout: TimeInterval
     ) throws {
         
         // start server
         let info = Service.Info(
             name: "Sensor Bridge",
             serialNumber: serialNumber,
+            model: model,
             firmwareRevision: TempSensorHomeKitTool.configuration.version
         )
         let storage = FileStorage(filename: fileName)
@@ -52,14 +58,17 @@ final class SensorBridgeController {
         )
         self.hapDevice = hapDevice
         self.central = central
+        self.timeout = timeout
         self.server = try HAP.Server(device: hapDevice, listenPort: Int(port))
         self.hapDevice.delegate = self
     }
     
     // MARK: - Methods
     
-    @MainActor
     func scan() async throws {
+        Task {
+            try await reachabilityWatchdog()
+        }
         let stream = try await central.scan()
         for try await scanData in stream {
             if bridge(GEThermometerAccessory.self, from: scanData) {
@@ -99,6 +108,20 @@ final class SensorBridgeController {
             log?("Found \(T.Advertisement.sensorType) \(scanData.peripheral.description)")
         }
         return true
+    }
+    
+    private func reachabilityWatchdog() async throws {
+        while true {
+            try await Task.sleep(nanoseconds: 1_000_000_000)
+            for (peripheral, accessory) in accessories {
+                let lastSeen = (accessory as? any SensorAccessory)!.lastSeen
+                if Date().timeIntervalSince(lastSeen) > timeout {
+                    self.accessories[peripheral] = nil // Remove accessory
+                    self.hapDevice.removeAccessories([accessory])
+                    log?("Removed unreachable \(peripheral)")
+                }
+            }
+        }
     }
 }
 

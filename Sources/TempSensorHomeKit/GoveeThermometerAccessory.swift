@@ -17,7 +17,9 @@ final class GoveeThermometerAccessory: HAP.Accessory.Thermometer, SensorAccessor
     
     let peripheral: NativeCentral.Peripheral
     
-    //let bridgeState = Service.BridgingState()
+    private(set) var lastSeen: Date = Date()
+    
+    //let bridgeState: AccessoryBridgingState
     
     let humidity = HAP.Service.HumiditySensor()
     
@@ -25,13 +27,23 @@ final class GoveeThermometerAccessory: HAP.Accessory.Thermometer, SensorAccessor
     
     init(peripheral: NativeCentral.Peripheral, advertisement: GoveeAdvertisement.Thermometer) {
         self.peripheral = peripheral
+        let id = advertisement.name.address.rawValue
+        #if os(Linux)
+        assert(id == peripheral.description)
+        #endif
         let info = Service.Info.Info(
             name: "Govee Thermometer Sensor",
-            serialNumber: advertisement.name.address.rawValue,
+            serialNumber: id,
             manufacturer: "Govee (Shenzhen Intellirocks Tech. Co., Ltd.)",
             model: advertisement.name.model.rawValue,
             firmwareRevision: "1.0.0"
-        )
+        )/*
+        self.bridgeState = AccessoryBridgingState(
+            reachable: true,
+            linkQuality: 0,
+            accessoryIdentifier: id,
+            category: 0
+        )*/
         super.init(
             info: info,
             additionalServices: [
@@ -40,11 +52,11 @@ final class GoveeThermometerAccessory: HAP.Accessory.Thermometer, SensorAccessor
                 battery
             ]
         )
-        //self.bridgeState.accessoryIdentifier.value = peripheral.description
         self.update(advertisement: advertisement)
     }
     
     func update(advertisement: GoveeAdvertisement.Thermometer) {
+        self.lastSeen = Date()
         self.reachable = true
         self.battery.batteryLevel?.value = advertisement.manufacturingData.batteryLevel
         self.battery.statusLowBattery.value = advertisement.manufacturingData.batteryLevel < 25 ? .batteryLow : .batteryNormal

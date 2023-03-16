@@ -15,6 +15,8 @@ final class GEThermometerAccessory: HAP.Accessory.Thermometer, SensorAccessory {
     
     let peripheral: NativeCentral.Peripheral
     
+    private(set) var lastSeen: Date = Date()
+    
     //let bridgeState = Service.BridgingState()
     
     let humidity = HAP.Service.HumiditySensor()
@@ -43,6 +45,7 @@ final class GEThermometerAccessory: HAP.Accessory.Thermometer, SensorAccessory {
     }
     
     func update(advertisement: GESensor) {
+        self.lastSeen = Date()
         self.reachable = true
         self.battery.batteryVoltage.value = advertisement.batteryVoltage
         self.battery.batteryLevel?.value = UInt8(advertisement.batteryLevel.rounded())
