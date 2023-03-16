@@ -45,6 +45,15 @@ struct TempSensorHomeKitTool: ParsableCommand {
     @Option(help: "The port of the HAP server.")
     var port: UInt = 8000
     
+    @Option(help: "Reachability timeout for bridged sensors.")
+    var timeout: UInt = {
+        #if DEBUG
+        return 60
+        #else
+        return 60 * 5
+        #endif
+    }()
+    
     private static var controller: SensorBridgeController!
     
     func run() throws {
@@ -64,7 +73,6 @@ struct TempSensorHomeKitTool: ParsableCommand {
                 serialNumber = ((host.localizedName ?? host.name) ?? host.address) ?? "1234"
                 model = getModelIdentifier() ?? "Macbook Pro"
                 #endif
-                let timeout: TimeInterval = 60 * 10
                 try await MainActor.run {
                     let controller = try SensorBridgeController(
                         fileName: file,
@@ -73,7 +81,7 @@ struct TempSensorHomeKitTool: ParsableCommand {
                         central: central,
                         serialNumber: serialNumber,
                         model: model,
-                        timeout: timeout
+                        timeout: TimeInterval(timeout)
                     )
                     controller.log = { print($0) }
                     controller.printPairingInstructions()
