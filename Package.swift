@@ -30,13 +30,23 @@ let package = Package(
         .package(
             url: "https://github.com/PureSwift/GATT.git",
             branch: "master"
-        )
+        ),
+        .package(
+            url: "https://github.com/MillerTechnologyPeru/Inkbird.git",
+            branch: "master"
+        ),
+        .package(
+            url: "https://github.com/MillerTechnologyPeru/Govee.git",
+            branch: "master"
+        ),
     ],
     targets: [
         .executableTarget(
             name: "TempSensorHomeKit",
             dependencies: [
                 "CoreSensor",
+                "Govee",
+                "Inkbird",
                 .product(
                     name: "HAP",
                     package: "HAP"
