@@ -35,11 +35,5 @@ final class CoreSensorTests: XCTestCase {
         XCTAssertEqual(sensor.batteryLevel, 87.87879)
         XCTAssertEqual(sensor.temperatureCelcius, 18.7)
         XCTAssertEqual(sensor.humidityPercentage, 68.3)
-        
-        XCTAssertEqual(sensor.read(), [
-            .batteryLevel(87.87879),
-            .temperature(18.7),
-            .humidity(68.3)
-        ])
     }
 }

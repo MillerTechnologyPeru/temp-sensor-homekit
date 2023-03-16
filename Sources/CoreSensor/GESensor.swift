@@ -35,7 +35,7 @@ extension GESensor: SensorAdvertisement {
     
     public static var sensorType: String { "com.ge.sensor" }
     
-    public init?<T: AdvertisementData>(advertisement: T) {
+    public init?<T: AdvertisementData>(_ advertisement: T) {
         guard let manufacturerData = advertisement.manufacturerData else {
             return nil
         }
@@ -79,20 +79,5 @@ public extension GESensor {
     
     var humidityPercentage: Float {
         max(min(Float(humidity) / 10, 100.0), 0)
-    }
-}
-
-public extension GESensor {
-    
-    func read<Central: CentralManager>(peripheral: Central.Peripheral, central: Central) -> [SensorReading] {
-        read()
-    }
-    
-    func read() -> [SensorReading] {
-        return [
-            .batteryLevel(batteryLevel),
-            .temperature(temperatureCelcius),
-            .humidity(humidityPercentage)
-        ]
     }
 }

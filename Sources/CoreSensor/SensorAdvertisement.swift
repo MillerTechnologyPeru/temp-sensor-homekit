@@ -14,7 +14,5 @@ public protocol SensorAdvertisement {
     
     static var sensorType: String { get }
     
-    init?<T: AdvertisementData>(advertisement: T)
-    
-    func read<Central: CentralManager>(peripheral: Central.Peripheral, central: Central) async throws -> [SensorReading]
+    init?<T: AdvertisementData>(_ advertisement: T)
 }
