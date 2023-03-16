@@ -33,7 +33,7 @@ public struct GESensor: Equatable, Hashable, Codable {
 
 extension GESensor: SensorAdvertisement {
     
-    public static var sensorType: String { "com.ge.sensor" }
+    public static var sensorType: String { "com.GE.Thermometer" }
     
     public init?<T: AdvertisementData>(_ advertisement: T) {
         guard let manufacturerData = advertisement.manufacturerData else {
