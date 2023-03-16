@@ -68,6 +68,14 @@ final class SensorBridgeController {
                 continue
             } else if bridge(InkbirdThermometerAccessory.self, from: scanData) {
                 continue
+            } else if (scanData.advertisementData.localName ?? "").hasPrefix("GVH") {
+                log?("Unable to parse Govee \(scanData.advertisementData.localName ?? "")")
+                #if DEBUG
+                if let additionalData = scanData.advertisementData.manufacturerData?.additionalData {
+                    log?("Invalid Govee manufacturer data: \([UInt8](additionalData))")
+                }
+                #endif
+                continue
             } else {
                 continue
             }
