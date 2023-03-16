@@ -27,10 +27,10 @@ final class GoveeThermometerAccessory: HAP.Accessory.Thermometer, SensorAccessor
         self.peripheral = peripheral
         let info = Service.Info.Info(
             name: "Govee Thermometer Sensor",
-            serialNumber: peripheral.description,
+            serialNumber: advertisement.name.address.rawValue,
             manufacturer: "Govee (Shenzhen Intellirocks Tech. Co., Ltd.)",
-            model: advertisement.name,
-            firmwareRevision: ""
+            model: advertisement.name.model.rawValue,
+            firmwareRevision: "1.0.0"
         )
         super.init(
             info: info,
