@@ -10,8 +10,10 @@ import Bluetooth
 import GATT
 import HAP
 import CoreSensor
+import Govee
+import Inkbird
 
-final class SensorController {
+final class SensorBridgeController {
     
     // MARK: - Properties
     
@@ -22,20 +24,23 @@ final class SensorController {
     private let server: HAP.Server
     
     private let central: NativeCentral
-        
+    
+    private var accessories = [NativeCentral.Peripheral: HAP.Accessory]()
+    
     // MARK: - Initialization
     
     public init(
         fileName: String,
         setupCode: HAP.Device.SetupCode,
         port: UInt,
-        central: NativeCentral
+        central: NativeCentral,
+        serialNumber: String
     ) throws {
         
         // start server
         let info = Service.Info(
             name: "Sensor Bridge",
-            serialNumber: "0000",
+            serialNumber: serialNumber,
             firmwareRevision: TempSensorHomeKitTool.configuration.version
         )
         let storage = FileStorage(filename: fileName)
@@ -56,27 +61,42 @@ final class SensorController {
     @MainActor
     func scan() async throws {
         let stream = try await central.scan()
-        var peripheralAccessories = [NativeCentral.Peripheral: HAP.Accessory]()
-        for try await scanResult in stream {
-            if let sensor = GESensor(advertisement: scanResult.advertisementData) {
-                log?("Found sensor: \(sensor)")
-                if let accessory = peripheralAccessories[scanResult.peripheral] as? GESensorAccessory {
-                    accessory.update(advertisement: sensor)
-                } else {
-                    let newAccessory = GESensorAccessory(peripheral: scanResult.peripheral, advertisement: sensor)
-                    peripheralAccessories[scanResult.peripheral] = newAccessory
-                    self.hapDevice.addAccessories([newAccessory])
-                }
+        for try await scanData in stream {
+            if bridge(GEThermometerAccessory.self, from: scanData) {
+                continue
+            } else if bridge(GoveeThermometerAccessory.self, from: scanData) {
+                continue
+            } else if bridge(InkbirdThermometerAccessory.self, from: scanData) {
+                continue
             } else {
                 continue
             }
         }
     }
+    
+    @discardableResult
+    private func bridge<T>(
+        _ accessoryType: T.Type,
+        from scanData: ScanData<NativeCentral.Peripheral, NativeCentral.Advertisement>
+    ) -> Bool where T: SensorAccessory, T: HAP.Accessory {
+        guard let sensorAdvertisement = T.Advertisement.init(scanData.advertisementData) else {
+            return false
+        }
+        if let accessory = self.accessories[scanData.peripheral] as? T {
+            accessory.update(advertisement: sensorAdvertisement)
+        } else {
+            let newAccessory = T.init(peripheral: scanData.peripheral, advertisement: sensorAdvertisement)
+            self.accessories[scanData.peripheral] = newAccessory
+            self.hapDevice.addAccessories([newAccessory])
+            log?("Found \(T.Advertisement.sensorType) \(scanData.peripheral.description)")
+        }
+        return true
+    }
 }
 
 // MARK: - HAP Device Delegate
 
-extension SensorController: HAP.DeviceDelegate {
+extension SensorBridgeController: HAP.DeviceDelegate {
     
     func didRequestIdentificationOf(_ accessory: Accessory) {
         log?("Requested identification of accessory \(String(describing: accessory.info.name.value ?? ""))")

@@ -45,7 +45,7 @@ struct TempSensorHomeKitTool: ParsableCommand {
     @Option(help: "The port of the HAP server.")
     var port: UInt = 8000
     
-    private static var controller: SensorController!
+    private static var controller: SensorBridgeController!
     
     func run() throws {
         
@@ -53,12 +53,20 @@ struct TempSensorHomeKitTool: ParsableCommand {
         Task {
             do {
                 let central = try await Self.loadBluetooth()
+                let serialNumber: String
+                #if os(Linux)
+                let address = try await central.hostController.readDeviceAddress()
+                serialNumber = address.rawValue
+                #elseif os(macOS)
+                serialNumber = Host.current().address ?? "1234"
+                #endif
                 try await MainActor.run {
-                    let controller = try SensorController(
+                    let controller = try SensorBridgeController(
                         fileName: file,
                         setupCode: setupCode.map { .override($0) } ?? .random,
                         port: port,
-                        central: central
+                        central: central,
+                        serialNumber: serialNumber
                     )
                     controller.log = { print($0) }
                     controller.printPairingInstructions()
@@ -92,7 +100,7 @@ struct TempSensorHomeKitTool: ParsableCommand {
         let clientOptions = GATTCentralOptions(
             maximumTransmissionUnit: .max,
             scanParameters: HCILESetScanParameters(
-                type: .passive,
+                type: .active,
                 interval: .max,
                 window: .max,
                 addressType: .public,
