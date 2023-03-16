@@ -16,3 +16,29 @@ jobs:
           run: swift build -c debug
         - name: Build (Release)
           run: swift build -c release
+
+    linux:
+        name: Linux
+        strategy:
+          matrix:
+            swift: [5.7.3]
+        runs-on: ubuntu-20.04
+        steps:
+        - name: Install Swift
+          uses: slashmo/install-swift@v0.3.0
+          with:
+            version: ${{ matrix.swift }}
+        - name: Install dependencies
+          run: |
+              sudo apt update
+              sudo apt install openssl libssl-dev libcurl4-openssl-dev libavahi-compat-libdnssd-dev -y
+        - name: Checkout
+          uses: actions/checkout@v2
+        - name: Swift Version
+          run: swift --version
+        - name: Build (Debug)
+          run: swift build -c debug
+        - name: Build (Release)
+          run: swift build -c release
+        - name: Test (Debug)
+          run: swift test -c debug
