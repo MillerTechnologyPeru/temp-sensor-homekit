@@ -19,6 +19,15 @@
       }
     },
     {
+      "identity" : "bluetoothlinux",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/PureSwift/BluetoothLinux.git",
+      "state" : {
+        "branch" : "master",
+        "revision" : "b086cec00bae14ff7e49508ae0328d37e1c7c5fc"
+      }
+    },
+    {
       "identity" : "gatt",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/PureSwift/GATT.git",
@@ -55,12 +64,30 @@
       }
     },
     {
+      "identity" : "netservice",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Bouke/NetService.git",
+      "state" : {
+        "revision" : "08e1f7663fd4b09b9f4ad165be89704c7cd2e3f8",
+        "version" : "0.8.1"
+      }
+    },
+    {
       "identity" : "regex",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/crossroadlabs/Regex.git",
       "state" : {
         "revision" : "166728756082a9cac6e4aed3ebbce8e41cb3a945",
         "version" : "1.2.0"
+      }
+    },
+    {
+      "identity" : "socket",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/PureSwift/Socket.git",
+      "state" : {
+        "branch" : "main",
+        "revision" : "6df639138e2d3ef26d2992f5691b59049bf75e91"
       }
     },
     {
@@ -124,6 +151,15 @@
       "state" : {
         "revision" : "45167b8006448c79dda4b7bd604e07a034c15c49",
         "version" : "2.48.0"
+      }
+    },
+    {
+      "identity" : "swift-system",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/PureSwift/swift-system",
+      "state" : {
+        "branch" : "feature/dynamic-lib",
+        "revision" : "3e5be49e7cee5ba46f5b5bc994f08061dd9fe92a"
       }
     }
   ],

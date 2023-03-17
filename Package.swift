@@ -32,6 +32,10 @@ let package = Package(
             branch: "master"
         ),
         .package(
+            url: "https://github.com/PureSwift/BluetoothLinux.git",
+            branch: "master"
+        ),
+        .package(
             url: "https://github.com/MillerTechnologyPeru/Inkbird.git",
             branch: "master"
         ),
@@ -47,6 +51,7 @@ let package = Package(
                 "CoreSensor",
                 "Govee",
                 "Inkbird",
+                "BluetoothLinux",
                 .product(
                     name: "HAP",
                     package: "HAP"
