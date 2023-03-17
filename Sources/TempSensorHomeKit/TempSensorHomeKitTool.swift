@@ -113,14 +113,7 @@ struct TempSensorHomeKitTool: ParsableCommand {
         let address = try await hostController.readDeviceAddress()
         print("Bluetooth Address: \(address)")
         let clientOptions = GATTCentralOptions(
-            maximumTransmissionUnit: .max,
-            scanParameters: HCILESetScanParameters(
-                type: .active,
-                interval: .max,
-                window: .max,
-                addressType: .public,
-                filterPolicy: .accept
-            )
+            maximumTransmissionUnit: .max
         )
         let central = LinuxCentral(
             hostController: hostController,

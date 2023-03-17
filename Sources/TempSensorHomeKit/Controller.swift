@@ -69,7 +69,7 @@ final class SensorBridgeController {
         Task {
             try await reachabilityWatchdog()
         }
-        let stream = try await central.scan()
+        let stream = try await central.scan(filterDuplicates: false)
         for try await scanData in stream {
             if bridge(GEThermometerAccessory.self, from: scanData) {
                 continue
