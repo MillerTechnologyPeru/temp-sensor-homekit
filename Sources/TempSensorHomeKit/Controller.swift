@@ -85,7 +85,10 @@ final class SensorBridgeController {
                 }
                 #endif
                 continue
-            } else {
+            } else if let manufacturerData = scanData.advertisementData.manufacturerData, 
+                manufacturerData.companyIdentifier == GESensor.companyIdentifier {
+                log?("Unable to parse GE \(manufacturerData)")
+             } else {
                 continue
             }
         }
