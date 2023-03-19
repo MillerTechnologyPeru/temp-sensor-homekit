@@ -45,15 +45,6 @@ struct TempSensorHomeKitTool: ParsableCommand {
     @Option(help: "The port of the HAP server.")
     var port: UInt = 8000
     
-    @Option(help: "Reachability timeout for bridged sensors.")
-    var timeout: UInt = {
-        #if DEBUG
-        return 60
-        #else
-        return 60 * 5
-        #endif
-    }()
-    
     private static var controller: SensorBridgeController!
     
     func run() throws {
@@ -62,26 +53,12 @@ struct TempSensorHomeKitTool: ParsableCommand {
         Task {
             do {
                 let central = try await Self.loadBluetooth()
-                let serialNumber: String
-                let model: String
-                #if os(Linux)
-                let address = try await central.hostController.readDeviceAddress()
-                serialNumber = address.rawValue
-                model = "Linux"
-                #elseif os(macOS)
-                let host = Host.current()
-                serialNumber = ((host.localizedName ?? host.name) ?? host.address) ?? "1234"
-                model = getModelIdentifier() ?? "Macbook Pro"
-                #endif
                 try await MainActor.run {
                     let controller = try SensorBridgeController(
                         fileName: file,
                         setupCode: setupCode.map { .override($0) } ?? .random,
                         port: port,
-                        central: central,
-                        serialNumber: serialNumber,
-                        model: model,
-                        timeout: TimeInterval(timeout)
+                        central: central
                     )
                     controller.log = { print($0) }
                     controller.printPairingInstructions()
@@ -102,14 +79,12 @@ struct TempSensorHomeKitTool: ParsableCommand {
         
         #if os(Linux)
         var hostController: HostController! = await HostController.default
-                
         // keep trying to load Bluetooth device
         while hostController == nil {
             print("No Bluetooth adapters found")
             try await Task.sleep(nanoseconds: 5 * 1_000_000_000)
             hostController = await HostController.default
         }
-                
         let address = try await hostController.readDeviceAddress()
         print("Bluetooth Address: \(address)")
         let clientOptions = GATTCentralOptions(

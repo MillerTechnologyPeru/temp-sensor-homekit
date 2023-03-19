@@ -26,7 +26,7 @@ final class SensorBridgeController {
     
     private let central: NativeCentral
     
-    private let timeout: TimeInterval
+    let configuration: SensorConfiguration?
     
     private var accessories = [NativeCentral.Peripheral: HAP.Accessory]()
     
@@ -37,19 +37,16 @@ final class SensorBridgeController {
         setupCode: HAP.Device.SetupCode,
         port: UInt,
         central: NativeCentral,
-        serialNumber: String,
-        model: String,
-        timeout: TimeInterval
+        configuration: SensorConfiguration? = nil
     ) throws {
-        
         // start server
         let info = Service.Info(
             name: "Sensor Bridge",
-            serialNumber: serialNumber,
-            model: model,
+            serialNumber: configuration?.serialNumber ?? UUID().uuidString,
+            model: configuration?.model ?? "Bridge",
             firmwareRevision: TempSensorHomeKitTool.configuration.version
         )
-        let storage = FileStorage(filename: fileName)
+        let storage = ConfigurationHAPStorage(filename: fileName)
         let hapDevice = HAP.Device(
             bridgeInfo: info,
             setupCode: setupCode,
@@ -58,7 +55,7 @@ final class SensorBridgeController {
         )
         self.hapDevice = hapDevice
         self.central = central
-        self.timeout = timeout
+        self.configuration = configuration
         self.server = try HAP.Server(device: hapDevice, listenPort: Int(port))
         self.hapDevice.delegate = self
     }
@@ -118,6 +115,7 @@ final class SensorBridgeController {
     }
     
     private func reachabilityWatchdog() async throws {
+        let timeout = TimeInterval(self.configuration?.timeout ?? 60 * 5)
         while true {
             try await Task.sleep(nanoseconds: 1_000_000_000)
             for (peripheral, accessory) in accessories {
