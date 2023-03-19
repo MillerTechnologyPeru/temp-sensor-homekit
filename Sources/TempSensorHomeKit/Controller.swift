@@ -69,7 +69,11 @@ final class SensorBridgeController {
         Task {
             try await reachabilityWatchdog()
         }
+        #if os(Linux)
+        let stream = try await central.scan(filterDuplicates: false, parameters: HCILESetScanParameters(type: .active, interval:  .max, window: .max, addressType: .public, filterPolicy: .accept))
+        #else
         let stream = try await central.scan(filterDuplicates: false)
+        #endif
         for try await scanData in stream {
             if bridge(GEThermometerAccessory.self, from: scanData) {
                 continue
