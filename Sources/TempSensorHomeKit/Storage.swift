@@ -10,6 +10,8 @@ import CoreSensor
 import HAP
 
 public struct Configuration: Equatable, Hashable, Codable {
+    
+    public let name: String
         
     public var serialNumber: String
     
@@ -24,10 +26,29 @@ public struct Configuration: Equatable, Hashable, Codable {
     internal var homeKit: HomeKit?
 }
 
+public extension Configuration {
+    
+    init() {
+        self.init(SensorConfiguration())
+    }
+    
+    init(_ configuration: SensorConfiguration) {
+        self.init(
+            name: configuration.name,
+            serialNumber: configuration.serialNumber,
+            model: configuration.model,
+            manufacturer: configuration.manufacturer,
+            sensors: configuration.sensors,
+            timeout: configuration.timeout
+        )
+    }
+}
+
 public extension SensorConfiguration {
     
     init(_ configuration: Configuration) {
         self.init(
+            name: configuration.name,
             sensors: configuration.sensors,
             timeout: configuration.timeout,
             serialNumber: configuration.serialNumber,
@@ -132,14 +153,7 @@ final class ConfigurationHAPStorage: Storage {
         if fileManager.fileExists(atPath: filename) {
             configuration = try readConfiguration()
         } else {
-            configuration = Configuration(
-                serialNumber: UUID().uuidString,
-                model: UUID().uuidString,
-                manufacturer: UUID().uuidString,
-                sensors: [],
-                timeout: 60 * 5,
-                homeKit: nil
-            )
+            configuration = Configuration(SensorConfiguration())
         }
         configuration.homeKit = try decoder.decode(Configuration.HomeKit.self, from: data)
         try writeConfiguration(configuration)

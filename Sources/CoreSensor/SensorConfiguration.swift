@@ -9,9 +9,7 @@ import Foundation
 
 public struct SensorConfiguration: Equatable, Hashable, Codable {
     
-    public var sensors: [Sensor]
-    
-    public var timeout: UInt
+    public var name: String
     
     public var serialNumber: String
     
@@ -19,13 +17,19 @@ public struct SensorConfiguration: Equatable, Hashable, Codable {
     
     public var manufacturer: String
     
+    public var timeout: UInt
+    
+    public var sensors: [Sensor]
+    
     public init(
+        name: String = "Sensor Bridge",
         sensors: [Sensor] = [],
         timeout: UInt = 60 * 5,
         serialNumber: String = UUID().uuidString,
-        model: String = UUID().uuidString,
-        manufacturer: String = UUID().uuidString
+        model: String = "Bridge",
+        manufacturer: String = "Miller Technology"
     ) {
+        self.name = name
         self.sensors = sensors
         self.timeout = timeout
         self.serialNumber = serialNumber

@@ -36,17 +36,17 @@ final class SensorBridgeController {
         fileName: String,
         setupCode: HAP.Device.SetupCode,
         port: UInt,
-        central: NativeCentral,
-        configuration: SensorConfiguration? = nil
+        central: NativeCentral
     ) throws {
         // start server
+        let storage = ConfigurationHAPStorage(filename: fileName)
+        let configuration: SensorConfiguration = (try? storage.readConfiguration()).flatMap({ .init($0) }) ?? SensorConfiguration()
         let info = Service.Info(
-            name: "Sensor Bridge",
-            serialNumber: configuration?.serialNumber ?? UUID().uuidString,
-            model: configuration?.model ?? "Bridge",
+            name: configuration.name,
+            serialNumber: configuration.serialNumber,
+            model: configuration.model,
             firmwareRevision: TempSensorHomeKitTool.configuration.version
         )
-        let storage = ConfigurationHAPStorage(filename: fileName)
         let hapDevice = HAP.Device(
             bridgeInfo: info,
             setupCode: setupCode,
