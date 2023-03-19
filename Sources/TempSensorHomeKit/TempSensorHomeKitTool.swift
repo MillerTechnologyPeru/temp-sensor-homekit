@@ -45,9 +45,21 @@ struct TempSensorHomeKitTool: ParsableCommand {
     @Option(help: "The port of the HAP server.")
     var port: UInt = 8000
     
+    #if os(Linux)
+    @Option(help: "Battery path.")
+    var battery: String?
+    #endif
+    
     private static var controller: SensorBridgeController!
     
     func run() throws {
+        
+        let batterySource: BatterySource?
+        #if os(macOS)
+        batterySource = MacBattery()
+        #elseif os(Linux)
+        batterySource = self.battery.flatMap { LinuxBattery(filePath: $0) }
+        #endif
         
         // start async code
         Task {
@@ -58,7 +70,8 @@ struct TempSensorHomeKitTool: ParsableCommand {
                         fileName: file,
                         setupCode: setupCode.map { .override($0) } ?? .random,
                         port: port,
-                        central: central
+                        central: central,
+                        battery: batterySource
                     )
                     controller.log = { print($0) }
                     controller.printPairingInstructions()
