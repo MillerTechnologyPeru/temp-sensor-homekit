@@ -26,7 +26,7 @@ final class SensorBridgeController {
     
     private let central: NativeCentral
     
-    let configuration: SensorConfiguration?
+    let configuration: SensorConfiguration
     
     private var accessories = [NativeCentral.Peripheral: HAP.Accessory]()
     
@@ -55,7 +55,7 @@ final class SensorBridgeController {
         )
         self.hapDevice = hapDevice
         self.central = central
-        self.configuration = configuration
+        self.configuration = (try? storage.readConfiguration()).flatMap({ .init($0) }) ?? SensorConfiguration()
         self.server = try HAP.Server(device: hapDevice, listenPort: Int(port))
         self.hapDevice.delegate = self
     }
@@ -115,7 +115,7 @@ final class SensorBridgeController {
     }
     
     private func reachabilityWatchdog() async throws {
-        let timeout = TimeInterval(self.configuration?.timeout ?? 60 * 5)
+        let timeout = TimeInterval(self.configuration.timeout)
         while true {
             try await Task.sleep(nanoseconds: 1_000_000_000)
             for (peripheral, accessory) in accessories {

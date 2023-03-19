@@ -18,6 +18,20 @@ public struct SensorConfiguration: Equatable, Hashable, Codable {
     public var model: String
     
     public var manufacturer: String
+    
+    public init(
+        sensors: [Sensor] = [],
+        timeout: UInt = 60 * 5,
+        serialNumber: String = UUID().uuidString,
+        model: String = UUID().uuidString,
+        manufacturer: String = UUID().uuidString
+    ) {
+        self.sensors = sensors
+        self.timeout = timeout
+        self.serialNumber = serialNumber
+        self.model = model
+        self.manufacturer = manufacturer
+    }
 }
 
 public extension SensorConfiguration {

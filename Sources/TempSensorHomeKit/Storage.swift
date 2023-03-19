@@ -21,7 +21,73 @@ public struct Configuration: Equatable, Hashable, Codable {
     
     public var timeout: UInt
     
-    internal var homeKit: String?
+    internal var homeKit: HomeKit?
+}
+
+public extension SensorConfiguration {
+    
+    init(_ configuration: Configuration) {
+        self.init(
+            sensors: configuration.sensors,
+            timeout: configuration.timeout,
+            serialNumber: configuration.serialNumber,
+            model: configuration.model,
+            manufacturer: configuration.manufacturer
+        )
+    }
+}
+
+public extension Configuration {
+    
+    struct HomeKit: Equatable, Hashable, Codable {
+        
+        public let identifier: String
+        
+        public var setupCode: String
+        
+        public var setupKey: String
+        
+        public var stableHash: Int
+        
+        public var privateKey: Data
+        
+        public var number: UInt32
+        
+        public var aidForAccessorySerialNumber = [String: InstanceID]()
+        
+        public var aidGenerator = AIDGenerator()
+        
+        public var pairings: [PairingIdentifier: Pairing] = [:]
+    }
+}
+
+public extension Configuration.HomeKit {
+    
+    typealias InstanceID = Int
+    
+    typealias PairingIdentifier = Data
+    
+    typealias PublicKey = Data
+    
+    struct Pairing: Codable, Equatable, Hashable {
+        
+        public enum Role: UInt8, Codable {
+            case regularUser = 0x00
+            case admin = 0x01
+        }
+
+        // iOS Device's Pairing Identifier, iOSDevicePairingID
+        public let identifier: PairingIdentifier
+
+        // iOS Device's Curve25519 public key
+        public let publicKey: PublicKey
+
+        public var role: Role
+    }
+    
+    struct AIDGenerator: Codable, Equatable, Hashable {
+        public var lastAID: InstanceID = 1
+    }
 }
 
 final class ConfigurationHAPStorage: Storage {
@@ -46,7 +112,10 @@ final class ConfigurationHAPStorage: Storage {
     
     func read() throws -> Data {
         let configuration = try readConfiguration()
-        return configuration.homeKit?.data(using: .utf8) ?? Data()
+        guard let homeKit = configuration.homeKit else {
+            throw CocoaError(.coderValueNotFound)
+        }
+        return try encoder.encode(homeKit)
     }
     
     func writeConfiguration(_ newValue: Configuration) throws {
@@ -72,7 +141,7 @@ final class ConfigurationHAPStorage: Storage {
                 homeKit: nil
             )
         }
-        configuration.homeKit = String(data: data, encoding: .utf8)
+        configuration.homeKit = try decoder.decode(Configuration.HomeKit.self, from: data)
         try writeConfiguration(configuration)
     }
 }
