@@ -55,7 +55,7 @@ final class SensorBridgeController {
         )
         self.hapDevice = hapDevice
         self.central = central
-        self.configuration = (try? storage.readConfiguration()).flatMap({ .init($0) }) ?? SensorConfiguration()
+        self.configuration = configuration
         self.server = try HAP.Server(device: hapDevice, listenPort: Int(port))
         self.hapDevice.delegate = self
     }
@@ -103,6 +103,10 @@ final class SensorBridgeController {
         guard let sensorAdvertisement = T.Advertisement.init(scanData.advertisementData) else {
             return false
         }
+        guard filter(scanData) else {
+            log?("Ignoring \(T.Advertisement.sensorType) \(scanData.peripheral.description)")
+            return false
+        }
         if let accessory = self.accessories[scanData.peripheral] as? T {
             accessory.update(advertisement: sensorAdvertisement)
         } else {
@@ -112,6 +116,19 @@ final class SensorBridgeController {
             log?("Found \(T.Advertisement.sensorType) \(scanData.peripheral.description)")
         }
         return true
+    }
+    
+    private func filter(_ scanData: ScanData<NativeCentral.Peripheral, NativeCentral.Advertisement>) -> Bool {
+        // filtering disabled
+        guard configuration.sensors.isEmpty == false else {
+            return true
+        }
+        let ids = configuration.sensors
+            .lazy
+            .map { $0.id }
+        let peripheralMatch = ids.contains(scanData.peripheral.description)
+        let nameMatch = scanData.advertisementData.localName.flatMap { ids.contains($0) } ?? false
+        return peripheralMatch || nameMatch
     }
     
     private func reachabilityWatchdog() async throws {
