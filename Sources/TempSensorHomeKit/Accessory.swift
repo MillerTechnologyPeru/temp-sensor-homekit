@@ -18,7 +18,7 @@ protocol SensorAccessory: AnyObject {
     
     var lastSeen: Date { get }
     
-    init(peripheral: NativeCentral.Peripheral, advertisement: Advertisement)
+    init(peripheral: NativeCentral.Peripheral, advertisement: Advertisement, configuration: SensorConfiguration.Sensor?)
     
     func update(advertisement: Advertisement)
 }

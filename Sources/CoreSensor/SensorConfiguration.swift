@@ -45,6 +45,10 @@ public extension SensorConfiguration {
         /// Unique identifier for the sensor. Can be name or Bluetooth address.
         public let id: String
         
+        public var name: String?
+        
+        public var model: String?
+        
         public var calibration: Calibration?
     }
 }

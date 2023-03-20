@@ -19,20 +19,23 @@ final class InkbirdThermometerAccessory: HAP.Accessory.Thermometer, SensorAccess
     
     private(set) var lastSeen: Date = Date()
     
+    let configuration: SensorConfiguration.Sensor?
+    
     //let bridgeState = Service.BridgingState()
     
     let humidity = HAP.Service.HumiditySensor()
     
     let battery = BatteryService()
     
-    init(peripheral: NativeCentral.Peripheral, advertisement: InkbirdAdvertisement.Thermometer) {
+    init(peripheral: NativeCentral.Peripheral, advertisement: InkbirdAdvertisement.Thermometer, configuration: SensorConfiguration.Sensor?) {
         self.peripheral = peripheral
+        self.configuration = configuration
         let info = Service.Info.Info(
-            name: "Inkbird Thermometer Sensor",
+            name: configuration?.name ?? "Inkbird Thermometer Sensor",
             serialNumber: peripheral.description,
             manufacturer: "Inkbird",
-            model: advertisement.name.rawValue,
-            firmwareRevision: ""
+            model: configuration?.model ?? advertisement.name.rawValue,
+            firmwareRevision: "1.0.0"
         )
         super.init(
             info: info,
@@ -51,8 +54,8 @@ final class InkbirdThermometerAccessory: HAP.Accessory.Thermometer, SensorAccess
         self.reachable = true
         self.battery.batteryLevel?.value = advertisement.manufacturingData.batteryLevel.rawValue
         self.battery.statusLowBattery.value = advertisement.manufacturingData.batteryLevel.rawValue < 25 ? .batteryLow : .batteryNormal
-        self.temperatureSensor.currentTemperature.value = advertisement.manufacturingData.temperature.celcius
-        self.humidity.currentRelativeHumidity.value = advertisement.manufacturingData.humidity.percentage
+        self.temperatureSensor.currentTemperature.value = advertisement.manufacturingData.temperature.celcius + (configuration?.calibration?.temperature ?? 0.0)
+        self.humidity.currentRelativeHumidity.value = advertisement.manufacturingData.humidity.percentage + (configuration?.calibration?.humidity ?? 0.0)
     }
 }
 

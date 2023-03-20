@@ -17,19 +17,22 @@ final class GEThermometerAccessory: HAP.Accessory.Thermometer, SensorAccessory {
     
     private(set) var lastSeen: Date = Date()
     
+    let configuration: SensorConfiguration.Sensor?
+    
     //let bridgeState = Service.BridgingState()
     
     let humidity = HAP.Service.HumiditySensor()
     
     let battery = BatteryService()
     
-    init(peripheral: NativeCentral.Peripheral, advertisement: GESensor) {
+    init(peripheral: NativeCentral.Peripheral, advertisement: GESensor, configuration: SensorConfiguration.Sensor?) {
         self.peripheral = peripheral
+        self.configuration = configuration
         let info = Service.Info.Info(
-            name: "GE Thermometer Sensor",
+            name: configuration?.name ?? "GE Thermometer Sensor",
             serialNumber: peripheral.description,
             manufacturer: "GE",
-            model: "\(advertisement.model)",
+            model: configuration?.model ?? advertisement.model.description,
             firmwareRevision: "\(advertisement.version)"
         )
         super.init(
@@ -50,8 +53,8 @@ final class GEThermometerAccessory: HAP.Accessory.Thermometer, SensorAccessory {
         self.battery.batteryVoltage.value = advertisement.batteryVoltage
         self.battery.batteryLevel?.value = UInt8(advertisement.batteryLevel.rounded())
         self.battery.statusLowBattery.value = advertisement.batteryLevel < 25 ? .batteryLow : .batteryNormal
-        self.temperatureSensor.currentTemperature.value = advertisement.temperatureCelcius
-        self.humidity.currentRelativeHumidity.value = advertisement.humidityPercentage
+        self.temperatureSensor.currentTemperature.value = advertisement.temperatureCelcius + (configuration?.calibration?.temperature ?? 0.0)
+        self.humidity.currentRelativeHumidity.value = advertisement.humidityPercentage + (configuration?.calibration?.humidity ?? 0.0)
     }
 }
 

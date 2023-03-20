@@ -75,9 +75,20 @@ final class SensorBridgeController {
             try await reachabilityWatchdog()
         }
         #if os(Linux)
-        let stream = try await central.scan(filterDuplicates: false, parameters: HCILESetScanParameters(type: .active, interval:  .max, window: .max, addressType: .public, filterPolicy: .accept))
+        let stream = try await central.scan(
+            filterDuplicates: false,
+            parameters: HCILESetScanParameters(
+                type: .active,
+                interval:  .max,
+                window: .max,
+                addressType: .public,
+                filterPolicy: .accept
+            )
+        )
         #else
-        let stream = try await central.scan(filterDuplicates: false)
+        let stream = try await central.scan(
+            filterDuplicates: false
+        )
         #endif
         for try await scanData in stream {
             if bridge(GEThermometerAccessory.self, from: scanData) {
@@ -118,7 +129,7 @@ final class SensorBridgeController {
         if let accessory = self.accessories[scanData.peripheral] as? T {
             accessory.update(advertisement: sensorAdvertisement)
         } else {
-            let newAccessory = T.init(peripheral: scanData.peripheral, advertisement: sensorAdvertisement)
+            let newAccessory = T.init(peripheral: scanData.peripheral, advertisement: sensorAdvertisement, configuration: configuration(for: scanData))
             self.accessories[scanData.peripheral] = newAccessory
             self.hapDevice.addAccessories([newAccessory])
             log?("Found \(T.Advertisement.sensorType) \(scanData.peripheral.description)")
@@ -131,12 +142,12 @@ final class SensorBridgeController {
         guard configuration.sensors.isEmpty == false else {
             return true
         }
-        let ids = configuration.sensors
-            .lazy
-            .map { $0.id }
-        let peripheralMatch = ids.contains(scanData.peripheral.description)
-        let nameMatch = scanData.advertisementData.localName.flatMap { ids.contains($0) } ?? false
-        return peripheralMatch || nameMatch
+        return configuration(for: scanData) != nil
+    }
+    
+    private func configuration(for scanData: ScanData<NativeCentral.Peripheral, NativeCentral.Advertisement>) -> SensorConfiguration.Sensor? {
+        return configuration.sensors
+            .first(where: { $0.id == scanData.peripheral.description || $0.id == scanData.advertisementData.localName })
     }
     
     private func reachabilityWatchdog() async throws {
