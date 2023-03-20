@@ -57,15 +57,20 @@ public final class MacBattery: BatterySource {
 
 public final class LinuxBattery: BatterySource {
     
-    let filePath: String
+    public let filePath: String
     
-    init(filePath: String) {
-        self.path = path
+    public init(filePath: String) throws {
+        self.filePath = filePath
+        let _ = try read()
     }
     
-    func read() throws -> UInt {
+    public func read() throws -> UInt {
         let data = try Data(contentsOf: URL(fileURLWithPath: filePath), options: [.mappedIfSafe])
-        guard let string = String(data: data, encoding: .utf8), let value = UInt(string) else {
+        guard var string = String(data: data, encoding: .utf8) else {
+            throw CocoaError(.fileReadCorruptFile)
+        }
+        string.removeLast()
+        guard let value = UInt(string) else {
             throw CocoaError(.fileReadCorruptFile)
         }
         return value

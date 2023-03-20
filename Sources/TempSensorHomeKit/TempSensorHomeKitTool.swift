@@ -58,7 +58,7 @@ struct TempSensorHomeKitTool: ParsableCommand {
         #if os(macOS)
         batterySource = MacBattery()
         #elseif os(Linux)
-        batterySource = self.battery.flatMap { LinuxBattery(filePath: $0) }
+        batterySource = try self.battery.flatMap { try LinuxBattery(filePath: $0) }
         #endif
         
         // start async code
