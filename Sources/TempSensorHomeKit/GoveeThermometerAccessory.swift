@@ -27,13 +27,10 @@ final class GoveeThermometerAccessory: HAP.Accessory.Thermometer, SensorAccessor
     
     let battery = BatteryService()
     
-    init(peripheral: NativeCentral.Peripheral, advertisement: GoveeAdvertisement.Thermometer, configuration: SensorConfiguration.Sensor?) {
+    init(peripheral: NativeCentral.Peripheral, advertisement: GoveeAccessory.Thermometer, configuration: SensorConfiguration.Sensor?) {
         self.peripheral = peripheral
         self.configuration = configuration
-        let id = advertisement.name.address.rawValue
-        #if os(Linux)
-        assert(id == peripheral.description)
-        #endif
+        let id = advertisement.name.rawValue
         let info = Service.Info.Info(
             name: configuration?.name ?? "Govee Thermometer Sensor",
             serialNumber: id,
@@ -58,13 +55,13 @@ final class GoveeThermometerAccessory: HAP.Accessory.Thermometer, SensorAccessor
         self.update(advertisement: advertisement)
     }
     
-    func update(advertisement: GoveeAdvertisement.Thermometer) {
+    func update(advertisement: GoveeAccessory.Thermometer) {
         self.lastSeen = Date()
         self.reachable = true
-        self.battery.batteryLevel?.value = advertisement.manufacturingData.batteryLevel
-        self.battery.statusLowBattery.value = advertisement.manufacturingData.batteryLevel < 25 ? .batteryLow : .batteryNormal
-        self.temperatureSensor.currentTemperature.value = advertisement.manufacturingData.temperature + (configuration?.calibration?.temperature ?? 0.0)
-        self.humidity.currentRelativeHumidity.value = advertisement.manufacturingData.humidity + (configuration?.calibration?.humidity ?? 0.0)
+        self.battery.batteryLevel?.value = advertisement.manufacturerData.batteryLevel
+        self.battery.statusLowBattery.value = advertisement.manufacturerData.batteryLevel < 25 ? .batteryLow : .batteryNormal
+        self.temperatureSensor.currentTemperature.value = advertisement.manufacturerData.temperature + (configuration?.calibration?.temperature ?? 0.0)
+        self.humidity.currentRelativeHumidity.value = advertisement.manufacturerData.humidity + (configuration?.calibration?.humidity ?? 0.0)
     }
 }
 
@@ -87,7 +84,7 @@ extension GoveeThermometerAccessory {
     }
 }
 
-extension GoveeAdvertisement.Thermometer: SensorAdvertisement {
+extension GoveeAccessory.Thermometer: SensorAdvertisement {
     
     public static var sensorType: String { "com.Govee.Thermometer" }
 }
