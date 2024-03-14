@@ -69,7 +69,7 @@ extension TirePressureSensorAccessory {
         
         init() {
             let name = PredefinedCharacteristic.name("Battery")
-            let batteryLevel = PredefinedCharacteristic.batteryLevel()
+            let batteryLevel = PredefinedCharacteristic.batteryLevel(100)
             let chargingState = PredefinedCharacteristic.chargingState()
             super.init(characteristics: [
                 AnyCharacteristic(name),

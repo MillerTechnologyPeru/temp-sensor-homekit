@@ -88,8 +88,7 @@ final class BridgeBatteryService: HAP.Service.Battery {
     init(source: BatterySource) {
         self.source = source
         let name = PredefinedCharacteristic.name("Battery")
-        let batteryLevel = PredefinedCharacteristic.batteryLevel()
-        batteryLevel.value = 100
+        let batteryLevel = PredefinedCharacteristic.batteryLevel(100)
         //let chargingState = PredefinedCharacteristic.chargingState()
         super.init(characteristics: [
             AnyCharacteristic(name),
