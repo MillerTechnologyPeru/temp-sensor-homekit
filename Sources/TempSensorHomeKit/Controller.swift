@@ -12,6 +12,8 @@ import HAP
 import CoreSensor
 import Govee
 import Inkbird
+import TPMS
+import XiaomiBluetooth
 
 @MainActor
 final class SensorBridgeController {
@@ -71,9 +73,7 @@ final class SensorBridgeController {
     // MARK: - Methods
     
     func scan() async throws {
-        Task {
-            try await reachabilityWatchdog()
-        }
+        // start scan
         #if os(Linux)
         let stream = try await central.scan(
             filterDuplicates: false,
@@ -90,6 +90,11 @@ final class SensorBridgeController {
             filterDuplicates: false
         )
         #endif
+        // scan timeout
+        Task {
+            try await Task.sleep(timeInterval: 45.0)
+            stream.stop()
+        }
         for try await scanData in stream {
             if bridge(GEThermometerAccessory.self, from: scanData) {
                 continue
@@ -102,10 +107,21 @@ final class SensorBridgeController {
             } else if let manufacturerData = scanData.advertisementData.manufacturerData,
                 manufacturerData.companyIdentifier == GESensor.companyIdentifier {
                 log?("Unable to parse GE \(manufacturerData)")
-             } else {
+            } else if let miBeacon = MiBeacon(scanData.advertisementData),
+                miBeacon.address != nil,
+                bridge(XiaomiThermometerAccessory.self, from: scanData) {
+                continue
+            } else {
                 continue
             }
         }
+        // remove devices not found
+        removeUnreachable()
+        // connect after scan
+        await connect()
+        // scan again
+        try await Task.sleep(timeInterval: 1.0)
+        try await scan()
     }
     
     @discardableResult
@@ -144,17 +160,31 @@ final class SensorBridgeController {
             .first(where: { $0.id == scanData.peripheral.description || $0.id == scanData.advertisementData.localName })
     }
     
-    private func reachabilityWatchdog() async throws {
+    private func removeUnreachable() {
         let timeout = TimeInterval(self.configuration.timeout)
-        while true {
-            try await Task.sleep(timeInterval: 1.0)
-            for (peripheral, accessory) in accessories {
-                let lastSeen = (accessory as? any SensorAccessory)!.lastSeen
-                if Date().timeIntervalSince(lastSeen) > timeout {
-                    self.accessories[peripheral] = nil // Remove accessory
-                    self.hapDevice.removeAccessories([accessory])
-                    log?("Removed unreachable \(peripheral)")
+        for (peripheral, accessory) in accessories {
+            let lastSeen = (accessory as? any SensorAccessory)!.lastSeen
+            if Date().timeIntervalSince(lastSeen) > timeout {
+                self.accessories[peripheral] = nil // Remove accessory
+                self.hapDevice.removeAccessories([accessory])
+                log?("Removed unreachable \(peripheral)")
+            }
+        }
+    }
+    
+    private func connect() async {
+        for (peripheral, accessory) in accessories {
+            guard let connectable = accessory as? any ConnectableSensorAccessory else {
+                continue
+            }
+            do {
+                // connect and update
+                try await central.connection(for: peripheral) { connection in
+                    try await connectable.update(connection: connection)
                 }
+            }
+            catch {
+                log?("Unable to connect and update \(peripheral). \(error)")
             }
         }
     }

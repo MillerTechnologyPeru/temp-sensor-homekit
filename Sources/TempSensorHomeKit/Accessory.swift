@@ -22,3 +22,8 @@ protocol SensorAccessory: AnyObject {
     
     func update(advertisement: Advertisement)
 }
+
+protocol ConnectableSensorAccessory: SensorAccessory {
+    
+    func update(connection: GATTConnection<NativeCentral>) async throws
+}
