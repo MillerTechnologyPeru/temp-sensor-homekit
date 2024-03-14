@@ -161,6 +161,15 @@
         "branch" : "master",
         "revision" : "52726c54f4504a3e836a667a04ff694357a4620d"
       }
+    },
+    {
+      "identity" : "xiaomibluetooth",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/MillerTechnologyPeru/XiaomiBluetooth.git",
+      "state" : {
+        "branch" : "master",
+        "revision" : "d04c9936d88e704aad3be40431a41af782f089f7"
+      }
     }
   ],
   "version" : 2

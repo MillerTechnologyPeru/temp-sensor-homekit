@@ -47,6 +47,10 @@ let package = Package(
             url: "https://github.com/MillerTechnologyPeru/TPMS.git",
             branch: "master"
         ),
+        .package(
+            url: "https://github.com/MillerTechnologyPeru/XiaomiBluetooth.git",
+            branch: "master"
+        )
     ],
     targets: [
         .executableTarget(
@@ -56,6 +60,7 @@ let package = Package(
                 "Govee",
                 "Inkbird",
                 "TPMS",
+                "XiaomiBluetooth",
                 "BluetoothLinux",
                 .product(
                     name: "HAP",
