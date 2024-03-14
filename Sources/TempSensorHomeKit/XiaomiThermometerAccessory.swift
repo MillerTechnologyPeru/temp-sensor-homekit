@@ -50,14 +50,13 @@ final class XiaomiThermometerAccessory: HAP.Accessory.Thermometer, SensorAccesso
             ]
         )
         //self.bridgeState.accessoryIdentifier.value = peripheral.description
-        self.update(advertisement: advertisement)
+        // default values
+        self.temperatureSensor.currentTemperature.value = 20.0
+        self.humidity.currentRelativeHumidity.value = 45.0
     }
     
     func update(advertisement: MiBeacon) {
-        self.lastSeen = Date()
-        self.reachable = true
-        self.temperatureSensor.currentTemperature.value = 20.0
-        self.humidity.currentRelativeHumidity.value = 45.0
+        
     }
 }
 
