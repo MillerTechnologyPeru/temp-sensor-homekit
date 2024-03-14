@@ -33,7 +33,7 @@ extension CoreBluetoothManager {
                 print("Waiting for CoreBluetooth to be ready, please turn on Bluetooth")
             }
             
-            try await Task.sleep(nanoseconds: 1_000_000_000)
+            try await Task.sleep(timeInterval: 1.0)
             powerOnWait += 1
             guard powerOnWait < timeout
                 else { throw TempSensorHomeKitToolError.bluetoothUnavailable }

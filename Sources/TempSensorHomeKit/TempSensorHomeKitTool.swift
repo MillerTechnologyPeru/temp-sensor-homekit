@@ -95,7 +95,7 @@ struct TempSensorHomeKitTool: ParsableCommand {
         // keep trying to load Bluetooth device
         while hostController == nil {
             print("No Bluetooth adapters found")
-            try await Task.sleep(nanoseconds: 5 * 1_000_000_000)
+            try await Task.sleep(timeInterval:  5.0)
             hostController = await HostController.default
         }
         let address = try await hostController.readDeviceAddress()
