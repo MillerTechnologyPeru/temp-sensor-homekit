@@ -152,6 +152,15 @@
         "branch" : "feature/dynamic-lib",
         "revision" : "bd3d1f6321a489ee443860ebe0f26ff689c938ad"
       }
+    },
+    {
+      "identity" : "tpms",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/MillerTechnologyPeru/TPMS.git",
+      "state" : {
+        "branch" : "master",
+        "revision" : "52726c54f4504a3e836a667a04ff694357a4620d"
+      }
     }
   ],
   "version" : 2
