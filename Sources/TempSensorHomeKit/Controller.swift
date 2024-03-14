@@ -97,7 +97,9 @@ final class SensorBridgeController {
                 continue
             } else if bridge(InkbirdThermometerAccessory.self, from: scanData) {
                 continue
-            } else if let manufacturerData = scanData.advertisementData.manufacturerData, 
+            } else if bridge(TirePressureSensorAccessory.self, from: scanData) {
+                continue
+            } else if let manufacturerData = scanData.advertisementData.manufacturerData,
                 manufacturerData.companyIdentifier == GESensor.companyIdentifier {
                 log?("Unable to parse GE \(manufacturerData)")
              } else {
@@ -145,7 +147,7 @@ final class SensorBridgeController {
     private func reachabilityWatchdog() async throws {
         let timeout = TimeInterval(self.configuration.timeout)
         while true {
-            try await Task.sleep(nanoseconds: 1_000_000_000)
+            try await Task.sleep(timeInterval: 1.0)
             for (peripheral, accessory) in accessories {
                 let lastSeen = (accessory as? any SensorAccessory)!.lastSeen
                 if Date().timeIntervalSince(lastSeen) > timeout {

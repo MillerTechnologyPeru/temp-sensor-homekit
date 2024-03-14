@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import Foundation
 import Bluetooth
 import GATT
 import HAP
