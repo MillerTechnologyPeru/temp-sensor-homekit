@@ -30,12 +30,12 @@ final class GoveeThermometerAccessory: HAP.Accessory.Thermometer, SensorAccessor
     init(peripheral: NativeCentral.Peripheral, advertisement: GoveeAccessory.Thermometer, configuration: SensorConfiguration.Sensor?) {
         self.peripheral = peripheral
         self.configuration = configuration
-        let id = advertisement.name.rawValue
+        let id = advertisement.id.rawValue
         let info = Service.Info.Info(
             name: configuration?.name ?? "Govee Thermometer Sensor",
             serialNumber: id,
             manufacturer: "Shenzhen Intellirocks Tech. Co., Ltd.",
-            model: configuration?.model ?? advertisement.name.model.rawValue,
+            model: configuration?.model ?? advertisement.id.model.rawValue,
             firmwareRevision: "1.0.0"
         )/*
         self.bridgeState = AccessoryBridgingState(
@@ -58,10 +58,10 @@ final class GoveeThermometerAccessory: HAP.Accessory.Thermometer, SensorAccessor
     func update(advertisement: GoveeAccessory.Thermometer) {
         self.lastSeen = Date()
         self.reachable = true
-        self.battery.batteryLevel?.value = advertisement.manufacturerData.batteryLevel
-        self.battery.statusLowBattery.value = advertisement.manufacturerData.batteryLevel < 25 ? .batteryLow : .batteryNormal
-        self.temperatureSensor.currentTemperature.value = advertisement.manufacturerData.temperature + (configuration?.calibration?.temperature ?? 0.0)
-        self.humidity.currentRelativeHumidity.value = advertisement.manufacturerData.humidity + (configuration?.calibration?.humidity ?? 0.0)
+        self.battery.batteryLevel?.value = advertisement.batteryLevel
+        self.battery.statusLowBattery.value = advertisement.batteryLevel < 25 ? .batteryLow : .batteryNormal
+        self.temperatureSensor.currentTemperature.value = advertisement.temperature + (configuration?.calibration?.temperature ?? 0.0)
+        self.humidity.currentRelativeHumidity.value = advertisement.humidity + (configuration?.calibration?.humidity ?? 0.0)
     }
 }
 
