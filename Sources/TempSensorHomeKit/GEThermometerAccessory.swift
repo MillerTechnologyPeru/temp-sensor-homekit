@@ -25,7 +25,7 @@ final class GEThermometerAccessory: HAP.Accessory.Thermometer, SensorAccessory {
     
     let battery = BatteryService()
     
-    init(peripheral: NativeCentral.Peripheral, advertisement: GESensor, configuration: SensorConfiguration.Sensor?) {
+    init(peripheral: NativeCentral.Peripheral, advertisement: GETemperatureSensor, configuration: SensorConfiguration.Sensor?) {
         self.peripheral = peripheral
         self.configuration = configuration
         let info = Service.Info.Info(
@@ -47,7 +47,7 @@ final class GEThermometerAccessory: HAP.Accessory.Thermometer, SensorAccessory {
         self.update(advertisement: advertisement)
     }
     
-    func update(advertisement: GESensor) {
+    func update(advertisement: GETemperatureSensor) {
         self.lastSeen = Date()
         self.reachable = true
         self.battery.batteryVoltage.value = advertisement.batteryVoltage

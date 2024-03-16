@@ -105,7 +105,7 @@ final class SensorBridgeController {
             } else if bridge(TirePressureSensorAccessory.self, from: scanData) {
                 continue
             } else if let manufacturerData = scanData.advertisementData.manufacturerData,
-                manufacturerData.companyIdentifier == GESensor.companyIdentifier {
+                manufacturerData.companyIdentifier == GETemperatureSensor.companyIdentifier {
                 log?("Unable to parse GE \(manufacturerData)")
             } else if let miBeacon = MiBeacon(scanData.advertisementData),
                 miBeacon.address != nil,

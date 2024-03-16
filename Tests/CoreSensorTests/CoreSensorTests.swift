@@ -13,14 +13,14 @@ import GATT
 
 final class CoreSensorTests: XCTestCase {
     
-    func testSensor() throws {
+    func testTemperatureSensor() throws {
         
         let data = GAPManufacturerSpecificData(
             companyIdentifier: 473,
             additionalData: Data([0x01, 0x01, 0xBE, 0x00, 0xBB, 0x02, 0xAB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xC3, 0x7E, 0x8B, 0x53])
         )
         
-        guard let sensor = GESensor(manufacturerData: data) else {
+        guard let sensor = GETemperatureSensor(manufacturerData: data) else {
             XCTFail()
             return
         }

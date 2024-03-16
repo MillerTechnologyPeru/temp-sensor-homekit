@@ -9,8 +9,8 @@ import Foundation
 import Bluetooth
 import GATT
 
-/// GE Temp Sensor
-public struct GESensor: Equatable, Hashable, Codable {
+/// GE Temperature Sensor
+public struct GETemperatureSensor: Equatable, Hashable, Codable {
     
     /// Model identifier
     public let model: UInt8
@@ -31,7 +31,7 @@ public struct GESensor: Equatable, Hashable, Codable {
     public let checksum: UInt32
 }
 
-extension GESensor: SensorAdvertisement {
+extension GETemperatureSensor: SensorAdvertisement {
     
     public static var sensorType: String { "com.GE.Thermometer" }
     
@@ -58,12 +58,12 @@ extension GESensor: SensorAdvertisement {
     }
 }
 
-public extension GESensor {
+public extension GETemperatureSensor {
     
     static var companyIdentifier: Bluetooth.CompanyIdentifier { 473 }
 }
 
-public extension GESensor {
+public extension GETemperatureSensor {
     
     var batteryVoltage: Float {
         1.0 + (Float(battery) / 100)
