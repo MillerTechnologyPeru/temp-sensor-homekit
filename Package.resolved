@@ -14,8 +14,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/PureSwift/Bluetooth.git",
       "state" : {
-        "revision" : "b0530d6bc367290be0f4babdc47782650450bc0e",
-        "version" : "6.4.2"
+        "revision" : "974ee4313fc8fe707bd5298009b810c0bca45d44",
+        "version" : "6.4.3"
       }
     },
     {
@@ -33,7 +33,7 @@
       "location" : "https://github.com/PureSwift/GATT.git",
       "state" : {
         "branch" : "master",
-        "revision" : "77d3bc6fa5b0c4bb4f8634f7a633cecdbcae5843"
+        "revision" : "113a71d853b9c59cf2119c49fbc4bfc1421d9ae2"
       }
     },
     {
@@ -42,7 +42,7 @@
       "location" : "https://github.com/MillerTechnologyPeru/Govee.git",
       "state" : {
         "branch" : "master",
-        "revision" : "e73ae1bd013e499d5790687a0000c310ced2ddaf"
+        "revision" : "c737855bf19c7ee3f9c3329c1a8a09b4c026ac73"
       }
     },
     {
