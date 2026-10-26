@@ -10,6 +10,7 @@ import Bluetooth
 import GATT
 import CoreSensor
 
+@MainActor
 protocol SensorAccessory: AnyObject {
     
     associatedtype Advertisement: SensorAdvertisement

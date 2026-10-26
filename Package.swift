@@ -1,4 +1,4 @@
-// swift-tools-version: 5.7
+// swift-tools-version: 6.4
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
@@ -25,11 +25,12 @@ let package = Package(
         ),
         .package(
             url: "https://github.com/PureSwift/Bluetooth.git",
-            .upToNextMajor(from: "6.0.0")
+            from: "8.0.0"
         ),
         .package(
             url: "https://github.com/PureSwift/GATT.git",
-            branch: "master"
+            from: "4.0.0",
+            traits: ["BluetoothGATT"]
         ),
         .package(
             url: "https://github.com/PureSwift/BluetoothLinux.git",
