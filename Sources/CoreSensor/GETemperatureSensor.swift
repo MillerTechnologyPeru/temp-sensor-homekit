@@ -42,7 +42,7 @@ extension GETemperatureSensor: SensorAdvertisement {
         self.init(manufacturerData: manufacturerData)
     }
     
-    public init?(manufacturerData: GATT.ManufacturerSpecificData) {
+    public init?<T: DataContainer>(manufacturerData: GATT.ManufacturerSpecificData<T>) {
         
         guard manufacturerData.companyIdentifier == Self.companyIdentifier,
             manufacturerData.additionalData.count == 18

@@ -81,19 +81,19 @@ extension XiaomiThermometerAccessory: ConnectableSensorAccessory {
         update(characteristic: temperatureCharacteristicValue)
         
         // read battery level
-        if let characteristic = connection.cache.characteristic(.batteryLevel, service: .batteryService) {
+        if let characteristic = connection.cache.characteristic(GATTBatteryLevel.uuid, service: BluetoothUUID.Service.battery) {
             let data = try await connection.central.readValue(for: characteristic)
             guard let value = BluetoothGATT.GATTBatteryLevel(data: data) else {
-                throw TempSensorHomeKitToolError.invalidCharacteristicValue(.batteryLevel)
+                throw TempSensorHomeKitToolError.invalidCharacteristicValue(GATTBatteryLevel.uuid)
             }
             update(characteristic: value)
         }
         
         // read information
-        if let characteristic = connection.cache.characteristic(.firmwareRevisionString, service: .deviceInformation) {
+        if let characteristic = connection.cache.characteristic(GATTFirmwareRevisionString.uuid, service: BluetoothUUID.Service.deviceInformation) {
             let data = try await connection.central.readValue(for: characteristic)
             guard let value = GATTFirmwareRevisionString(data: data) else {
-                throw TempSensorHomeKitToolError.invalidCharacteristicValue(.firmwareRevisionString)
+                throw TempSensorHomeKitToolError.invalidCharacteristicValue(GATTFirmwareRevisionString.uuid)
             }
             update(characteristic: value)
         }

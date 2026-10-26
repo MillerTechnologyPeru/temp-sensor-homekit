@@ -17,8 +17,8 @@ import HAP
 import ArgumentParser
 
 #if os(Linux)
-typealias LinuxCentral = GATTCentral<BluetoothLinux.HostController, BluetoothLinux.L2CAPSocket>
-typealias LinuxPeripheral = GATTPeripheral<BluetoothLinux.HostController, BluetoothLinux.L2CAPSocket>
+typealias LinuxCentral = GATTCentral<BluetoothLinux.HostController, BluetoothLinux.L2CAPSocket.Connection>
+typealias LinuxPeripheral = GATTPeripheral<BluetoothLinux.HostController, BluetoothLinux.L2CAPSocket.Server>
 typealias NativeCentral = LinuxCentral
 typealias NativePeripheral = LinuxPeripheral
 #elseif os(macOS)
@@ -50,6 +50,7 @@ struct TempSensorHomeKitTool: ParsableCommand {
     var battery: String?
     #endif
     
+    @MainActor
     private static var controller: SensorBridgeController!
     
     func run() throws {
@@ -91,12 +92,12 @@ struct TempSensorHomeKitTool: ParsableCommand {
     private static func loadBluetooth() async throws -> NativeCentral {
         
         #if os(Linux)
-        var hostController: HostController! = await HostController.default
+        var hostController: HostController! = await HostController.controllers.first
         // keep trying to load Bluetooth device
         while hostController == nil {
             print("No Bluetooth adapters found")
             try await Task.sleep(timeInterval:  5.0)
-            hostController = await HostController.default
+            hostController = await HostController.controllers.first
         }
         let address = try await hostController.readDeviceAddress()
         print("Bluetooth Address: \(address)")
@@ -106,7 +107,7 @@ struct TempSensorHomeKitTool: ParsableCommand {
         let central = LinuxCentral(
             hostController: hostController,
             options: clientOptions,
-            socket: BluetoothLinux.L2CAPSocket.self
+            socket: BluetoothLinux.L2CAPSocket.Connection.self
         )
         #elseif os(macOS)
         let central = DarwinCentral()

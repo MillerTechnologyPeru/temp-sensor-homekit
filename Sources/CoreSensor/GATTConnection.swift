@@ -9,10 +9,11 @@ import Foundation
 import Bluetooth
 import GATT
 
-public extension CentralManager {
+public extension CentralManager where Self: Sendable, AttributeID: Sendable {
     
     func connection<T>(
         for peripheral: Peripheral,
+        isolation: isolated (any Actor)? = #isolation,
         _ connection: (GATTConnection<Self>) async throws -> (T)
     ) async throws -> T {
         // connect first
@@ -41,7 +42,7 @@ public extension CentralManager {
     }
 }
 
-public struct GATTConnection <Central: CentralManager> {
+public struct GATTConnection <Central: CentralManager>: Sendable where Central: Sendable, Central.AttributeID: Sendable {
     
     public unowned let central: Central
     
@@ -61,7 +62,7 @@ public extension GATTConnection {
 
 public extension GATTConnection {
     
-    struct Cache: Equatable, Hashable {
+    struct Cache: Equatable, Hashable, Sendable {
         
         public var services: [ServiceCache]
         
@@ -70,7 +71,7 @@ public extension GATTConnection {
         }
     }
     
-    struct ServiceCache: Equatable, Hashable, Identifiable {
+    struct ServiceCache: Equatable, Hashable, Identifiable, Sendable {
         
         public var id: BluetoothUUID {
             service.uuid
@@ -81,7 +82,7 @@ public extension GATTConnection {
         public var characteristics: [CharacteristicCache]
     }
     
-    struct CharacteristicCache: Equatable, Hashable, Identifiable {
+    struct CharacteristicCache: Equatable, Hashable, Identifiable, Sendable {
         
         public var id: BluetoothUUID {
             characteristic.uuid
@@ -104,7 +105,7 @@ public extension GATTConnection.Cache {
     }
 }
 
-public extension CentralManager {
+public extension CentralManager where Self: Sendable, AttributeID: Sendable {
     
     /// Fetch all characteristics for all services.
     func cacheServices(

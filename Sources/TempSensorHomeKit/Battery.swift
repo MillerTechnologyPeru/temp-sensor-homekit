@@ -11,7 +11,7 @@ import HAP
 import IOKit.ps
 #endif
 
-public protocol BatterySource {
+public protocol BatterySource: Sendable {
     
     func read() throws -> UInt
 }
@@ -79,7 +79,8 @@ public final class LinuxBattery: BatterySource {
 
 #endif
 
-final class BridgeBatteryService: HAP.Service.Battery {
+// Only accessed from the main run loop.
+final class BridgeBatteryService: HAP.Service.Battery, @unchecked Sendable {
     
     let source: BatterySource
     

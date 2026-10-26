@@ -91,7 +91,7 @@ final class SensorBridgeController {
         )
         #endif
         // scan timeout
-        Task {
+        _ = Task {
             try await Task.sleep(timeInterval: 45.0)
             stream.stop()
         }
@@ -192,7 +192,7 @@ final class SensorBridgeController {
 
 // MARK: - HAP Device Delegate
 
-extension SensorBridgeController: HAP.DeviceDelegate {
+extension SensorBridgeController: @preconcurrency HAP.DeviceDelegate {
     
     func didRequestIdentificationOf(_ accessory: Accessory) {
         log?("Requested identification of accessory \(String(describing: accessory.info.name.value ?? ""))")
