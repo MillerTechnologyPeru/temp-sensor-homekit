@@ -90,3 +90,5 @@ iOSInjectionProject/
 
 # VS Code
 .vscode
+# HomeKit identity and pairing keys
+configuration.json
