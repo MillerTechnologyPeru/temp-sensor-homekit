@@ -73,6 +73,24 @@ final class SensorBridgeController {
     // MARK: - Methods
     
     func scan() async throws {
+        while true {
+            do {
+                try await scanOnce()
+            }
+            catch {
+                // HCI requests can time out while advertising reports flood the HCI socket
+                log?("Scan failed. \(error)")
+            }
+            // remove devices not found
+            removeUnreachable()
+            // connect after scan
+            await connect()
+            // scan again
+            try await Task.sleep(timeInterval: 1.0)
+        }
+    }
+
+    private func scanOnce() async throws {
         // start scan
         #if os(Linux)
         let stream = try await central.scan(
@@ -115,13 +133,6 @@ final class SensorBridgeController {
                 continue
             }
         }
-        // remove devices not found
-        removeUnreachable()
-        // connect after scan
-        await connect()
-        // scan again
-        try await Task.sleep(timeInterval: 1.0)
-        try await scan()
     }
     
     @discardableResult
