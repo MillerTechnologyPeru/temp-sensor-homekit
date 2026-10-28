@@ -95,6 +95,18 @@ let package = Package(
                     package: "GATT",
                     condition: .when(platforms: [.macOS])
                 ),
+            ],
+            exclude: [
+                "Info.plist"
+            ],
+            linkerSettings: [
+                // Embed Info.plist so macOS grants Bluetooth access when launched by launchd
+                .unsafeFlags([
+                    "-Xlinker", "-sectcreate",
+                    "-Xlinker", "__TEXT",
+                    "-Xlinker", "__info_plist",
+                    "-Xlinker", "Sources/TempSensorHomeKit/Info.plist"
+                ], .when(platforms: [.macOS]))
             ]
         ),
         .target(
