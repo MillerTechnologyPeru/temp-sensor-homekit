@@ -1,5 +1,5 @@
 {
-  "originHash" : "350434302dd2a65868b1afc6adaa7405f2d5adaa99ee6c06a23c22c29d798bbe",
+  "originHash" : "e836007ef9ea065cad9e967f8759c82847f2d9f3c7e2afa875a77dc6a28974da",
   "pins" : [
     {
       "identity" : "bigint",
@@ -25,7 +25,7 @@
       "location" : "https://github.com/PureSwift/BluetoothLinux.git",
       "state" : {
         "branch" : "master",
-        "revision" : "706cd383d1ca09cbdc9f682a9020a48043405270"
+        "revision" : "93efd3f038f33d3e200599439b78422279547740"
       }
     },
     {
