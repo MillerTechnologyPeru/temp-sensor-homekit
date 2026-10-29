@@ -103,10 +103,15 @@ extension InkbirdThermometerAccessory: EveHistoryAccessory {
     }
     
     private func download(central: NativeCentral) async throws -> Int {
-        let connection = try await central.connect(to: peripheral, model: .ibsTH2)
+        let connection = try await central.connect(
+            to: peripheral,
+            model: .ibsTH2,
+            connectTimeout: Self.syncConnectTimeout,
+            timeout: Self.syncTimeout
+        )
         let readings: [InkbirdHistoryReading]
         do {
-            readings = try await connection.history()
+            readings = try await connection.history(timeout: Self.syncTimeout)
         }
         catch {
             await connection.disconnect()

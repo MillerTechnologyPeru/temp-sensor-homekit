@@ -114,7 +114,12 @@ extension GoveeThermometerAccessory: EveHistoryAccessory {
     }
     
     private func download(central: NativeCentral) async throws -> Int {
-        let connection = try await central.connect(to: peripheral, model: model)
+        let connection = try await central.connect(
+            to: peripheral,
+            model: model,
+            connectTimeout: Self.syncConnectTimeout,
+            timeout: Self.syncTimeout
+        )
         let count: Int
         do {
             count = try await sync(connection: connection)
@@ -131,7 +136,7 @@ extension GoveeThermometerAccessory: EveHistoryAccessory {
         self.lastSeen = Date()
         self.reachable = true
         if info.firmwareRevision?.value == Self.defaultFirmwareRevision,
-           let version = try await connection.send(GoveeQuery.thermometerFirmwareVersion).thermometerFirmwareVersion {
+           let version = try await connection.send(GoveeQuery.thermometerFirmwareVersion, timeout: Self.syncTimeout).thermometerFirmwareVersion {
             info.firmwareRevision?.value = version
         }
         // download minutes since the last entry
@@ -142,7 +147,7 @@ extension GoveeThermometerAccessory: EveHistoryAccessory {
         guard minutes >= EveHistory.interval / 60 else {
             return 0
         }
-        let readings = try await connection.thermometerHistory(minutes: UInt16(min(minutes, maxMinutes)))
+        let readings = try await connection.thermometerHistory(minutes: UInt16(min(minutes, maxMinutes)), timeout: Self.syncTimeout)
         let samples = readings.map {
             EveHistory.Sample(
                 date: now - TimeInterval($0.minutesAgo) * 60,

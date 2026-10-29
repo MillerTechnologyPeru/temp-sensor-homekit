@@ -50,4 +50,12 @@ extension EveHistoryAccessory {
     
     /// Time to wait before trying again after a failed history download.
     static var syncRetryInterval: TimeInterval { 5 * 60 }
+    
+    /// Time allowed to establish the Bluetooth connection for a history download.
+    ///
+    /// A connection attempt that times out stays queued for the peripheral, so keep this generous.
+    static var syncConnectTimeout: TimeInterval { 30 }
+    
+    /// Time allowed for each reply, and between history records, during a download.
+    static var syncTimeout: TimeInterval { 10 }
 }
