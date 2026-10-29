@@ -74,7 +74,7 @@ final class SensorBridgeController {
         self.central = central
         self.configuration = configuration
         self.battery = battery
-        self.historyStore = try EveHistoryStore(configurationFile: fileName)
+        self.historyStore = try EveHistoryStore(configurationFile: fileName, limit: configuration.historyLimit)
         self.server = try HAP.Server(device: hapDevice, listenPort: Int(port))
         self.hapDevice.delegate = self
     }
@@ -257,17 +257,8 @@ private extension SensorBridgeController {
         await completion.wait()
     }
     
-    /// Loads the stored history, importing the JSON file used by earlier versions.
+    /// Loads the stored history.
     func loadHistories() async {
-        do {
-            let count = try await historyStore.migrateJSON()
-            if count > 0 {
-                log?("Imported history of \(count) sensors into \(historyStore.path)")
-            }
-        }
-        catch {
-            log?("Unable to import history. \(error)")
-        }
         do {
             histories = try await historyStore.read()
         }

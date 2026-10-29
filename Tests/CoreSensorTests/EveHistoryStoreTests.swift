@@ -7,6 +7,7 @@
 
 import Foundation
 import XCTest
+import CoreModel
 @testable import CoreSensor
 
 final class EveHistoryStoreTests: XCTestCase {
@@ -14,12 +15,12 @@ final class EveHistoryStoreTests: XCTestCase {
     /// 2001-01-01 + 1000 intervals
     let start = Date(timeIntervalSinceReferenceDate: 600_000)
 
-    func makeStore() throws -> EveHistoryStore {
+    func makeStore(limit: UInt = EveHistoryStore.defaultLimit) throws -> EveHistoryStore {
         let path = FileManager.default.temporaryDirectory
             .appendingPathComponent("EveHistoryStoreTests-\(UUID()).sqlite")
             .path
         addTeardownBlock { try? FileManager.default.removeItem(atPath: path) }
-        return try EveHistoryStore(path: path)
+        return try EveHistoryStore(path: path, limit: limit)
     }
 
     func samples(_ count: Int, from date: Date) -> [EveHistory.Sample] {
@@ -81,6 +82,28 @@ final class EveHistoryStoreTests: XCTestCase {
         try await store.save(history, replacing: oldValue, for: "A")
         let histories = try await store.read()
         XCTAssertEqual(histories["A"], history)
+        // entries dropped from the Eve history memory stay in the database
+        let count = try await store.database.count(SensorHistoryEntry.self)
+        XCTAssertEqual(count, UInt(capacity + 100))
+    }
+
+    func testLimit() async throws {
+        let store = try makeStore(limit: 10)
+        var a = EveHistory()
+        a.append(averaging: samples(25, from: start), now: .distantFuture)
+        var b = EveHistory()
+        b.append(averaging: samples(5, from: start), now: .distantFuture)
+        try await store.save(a, for: "A")
+        try await store.save(b, for: "B")
+        // the oldest entries over the limit are deleted, for each sensor
+        let entries = try await store.database.fetch(SensorHistoryEntry.self)
+        XCTAssertEqual(entries.filter { $0.sensor == "A" }.map(\.index).sorted(), Array(17 ... 26))
+        XCTAssertEqual(entries.filter { $0.sensor == "B" }.count, 5)
+        let oldValue = a
+        a.append(averaging: samples(3, from: start + 25 * EveHistory.interval), now: .distantFuture)
+        try await store.save(a, replacing: oldValue, for: "A")
+        let updated = try await store.database.fetch(SensorHistoryEntry.self, predicate: SensorHistoryEntry.CodingKeys.sensor == "A")
+        XCTAssertEqual(updated.map(\.index).sorted(), Array(20 ... 29))
     }
 
     func testMissingEntry() async throws {

@@ -10,51 +10,61 @@ import CoreModel
 import CoreModelSQLite
 
 /// Eve history of each sensor, stored in a SQLite database.
+///
+/// Keeps up to ``limit`` entries per sensor, more than the Eve history memory holds.
 public actor EveHistoryStore {
 
     public nonisolated let path: String
 
-    private let database: SQLiteDatabase
+    /// Maximum number of entries stored for each sensor. Older entries are deleted.
+    public nonisolated let limit: UInt
+
+    internal let database: SQLiteDatabase
 
     /// Opens or creates the database at `path`.
-    public init(path: String) throws {
+    public init(path: String, limit: UInt = EveHistoryStore.defaultLimit) throws {
         self.path = path
+        self.limit = limit
         self.database = try SQLiteDatabase(path: path, model: Self.model)
     }
 }
 
 public extension EveHistoryStore {
 
+    /// Default number of entries stored for each sensor, almost two years of 10 minute entries.
+    static var defaultLimit: UInt { 100_000 }
+
     static var model: Model {
         Model(entities: SensorHistory.self, SensorHistoryEntry.self)
     }
 
-    /// Reads the history of every sensor.
+    /// Reads the newest entries of every sensor, as many as the Eve history memory holds.
     ///
-    /// A sensor whose stored entries are missing one is deleted, so its history is downloaded again.
+    /// A sensor whose newest entries are missing one is deleted, so its history is downloaded again.
     func read() async throws -> [String: EveHistory] {
         let sensors = try await database.fetch(SensorHistory.self)
-        let entries = Dictionary(grouping: try await database.fetch(SensorHistoryEntry.self), by: \.sensor)
         var histories = [String: EveHistory]()
         for sensor in sensors {
-            let stored = (entries[sensor.id.rawValue] ?? []).sorted { $0.index < $1.index }
-            // entries older than the memory size remain if a save was interrupted
+            let stored = try await database.fetch(
+                SensorHistoryEntry.self,
+                sortDescriptors: [.init(property: PropertyKey(SensorHistoryEntry.CodingKeys.index), ascending: false)],
+                predicate: SensorHistoryEntry.CodingKeys.sensor == sensor.id.rawValue,
+                fetchLimit: Int(EveHistory.memorySize) - 1
+            )
             let newest = stored
-                .suffix(Int(EveHistory.memorySize) - 1)
+                .reversed()
                 .map { EveHistory.Entry(index: $0.index, date: $0.date, temperature: $0.temperature, humidity: $0.humidity) }
             guard Self.isValid(newest) else {
-                try await database.delete(SensorHistoryEntry.entityName, for: stored.map { ObjectID($0.id) })
-                try await database.delete(SensorHistory.self, for: sensor.id)
+                try await delete(sensor: sensor.id)
                 continue
             }
-            histories[sensor.id.rawValue] = EveHistory(referenceDate: sensor.referenceDate, entries: Array(newest))
+            histories[sensor.id.rawValue] = EveHistory(referenceDate: sensor.referenceDate, entries: newest)
         }
         return histories
     }
 
-    /// Saves the changes to a sensor's history since `oldValue`, the history last saved for it.
-    ///
-    /// Inserts the entries newer than `oldValue` and deletes the entries no longer in `newValue`.
+    /// Saves the entries newer than `oldValue`, the history last saved for the sensor,
+    /// and deletes the entries over ``limit``.
     func save(_ newValue: EveHistory, replacing oldValue: EveHistory = EveHistory(), for sensor: String) async throws {
         guard let referenceDate = newValue.referenceDate else {
             return
@@ -72,14 +82,18 @@ public extension EveHistoryStore {
                     humidity: $0.humidity
                 ).encode()
             }
-        let firstIndex = entries.first?.index ?? 0
-        let oldEntries: [EveHistory.Entry] = oldValue.entries
-        let deleted = oldEntries
-            .filter { $0.index < firstIndex }
-            .map { ObjectID(SensorHistoryEntry.ID(sensor: sensor, index: $0.index)) }
-        // write new entries before dropping old ones, so an interrupted save only leaves extra old entries
         try await database.insert(inserted)
         try await database.insert(SensorHistory(id: SensorHistory.ID(rawValue: sensor), referenceDate: referenceDate))
+        // indices are consecutive, so the entries over the limit are the ones at or below this index
+        let lastIndex = newValue.lastIndex
+        guard UInt(lastIndex) > limit else {
+            return
+        }
+        let deleted = try await database.fetchID(FetchRequest(
+            entity: SensorHistoryEntry.entityName,
+            predicate: SensorHistoryEntry.CodingKeys.sensor == sensor
+                && SensorHistoryEntry.CodingKeys.index <= Int64(lastIndex) - Int64(limit)
+        ))
         if deleted.isEmpty == false {
             try await database.delete(SensorHistoryEntry.entityName, for: deleted)
         }
@@ -87,6 +101,16 @@ public extension EveHistoryStore {
 }
 
 private extension EveHistoryStore {
+
+    /// Deletes a sensor and all its entries.
+    func delete(sensor: SensorHistory.ID) async throws {
+        let entries = try await database.fetchID(FetchRequest(
+            entity: SensorHistoryEntry.entityName,
+            predicate: SensorHistoryEntry.CodingKeys.sensor == sensor.rawValue
+        ))
+        try await database.delete(SensorHistoryEntry.entityName, for: entries)
+        try await database.delete(SensorHistory.self, for: sensor)
+    }
 
     /// Whether the entries have consecutive indices, starting where ``EveHistory`` expects.
     static func isValid(_ entries: [EveHistory.Entry]) -> Bool {

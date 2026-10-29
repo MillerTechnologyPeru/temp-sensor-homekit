@@ -23,6 +23,9 @@ public struct Configuration: Equatable, Hashable, Codable {
     
     public var timeout: UInt
     
+    /// Maximum number of history entries stored for each sensor. Defaults to 100,000.
+    public var historyLimit: UInt?
+    
     internal var homeKit: HomeKit?
 }
 
@@ -39,7 +42,8 @@ public extension Configuration {
             model: configuration.model,
             manufacturer: configuration.manufacturer,
             sensors: configuration.sensors,
-            timeout: configuration.timeout
+            timeout: configuration.timeout,
+            historyLimit: configuration.historyLimit
         )
     }
 }
@@ -51,6 +55,7 @@ public extension SensorConfiguration {
             name: configuration.name,
             sensors: configuration.sensors,
             timeout: configuration.timeout,
+            historyLimit: configuration.historyLimit ?? SensorConfiguration().historyLimit,
             serialNumber: configuration.serialNumber,
             model: configuration.model,
             manufacturer: configuration.manufacturer
@@ -163,32 +168,11 @@ final class ConfigurationHAPStorage: Storage {
 extension EveHistoryStore {
     
     /// Opens the history database stored next to the configuration file.
-    init(configurationFile: String) throws {
+    init(configurationFile: String, limit: UInt) throws {
         let path = URL(fileURLWithPath: configurationFile)
             .deletingLastPathComponent()
             .appendingPathComponent("history.sqlite")
             .path
-        try self.init(path: path)
-    }
-    
-    /// Imports the history stored by earlier versions in `history.json`, next to the database.
-    ///
-    /// The file is renamed to `history.json.migrated` once imported.
-    ///
-    /// - Returns: The number of sensors imported.
-    func migrateJSON() async throws -> Int {
-        let url = URL(fileURLWithPath: path)
-            .deletingLastPathComponent()
-            .appendingPathComponent("history.json")
-        guard FileManager.default.fileExists(atPath: url.path) else {
-            return 0
-        }
-        let jsonData = try Data(contentsOf: url, options: [.mappedIfSafe])
-        let histories = try JSONDecoder().decode([String: EveHistory].self, from: jsonData)
-        for (sensor, history) in histories {
-            try await save(history, for: sensor)
-        }
-        try FileManager.default.moveItem(at: url, to: url.appendingPathExtension("migrated"))
-        return histories.count
+        try self.init(path: path, limit: limit)
     }
 }
