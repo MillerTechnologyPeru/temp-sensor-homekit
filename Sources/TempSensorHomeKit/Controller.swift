@@ -34,9 +34,10 @@ final class SensorBridgeController {
     
     private var accessories = [NativeCentral.Peripheral: HAP.Accessory]()
     
-    private let historyStorage: EveHistoryStorage
+    private let historyStore: EveHistoryStore
     
-    private var histories: [String: EveHistory]
+    /// Last saved history of each sensor.
+    private var histories = [String: EveHistory]()
     
     /// Peripherals with a history download in progress.
     private var syncing = Set<NativeCentral.Peripheral>()
@@ -73,8 +74,7 @@ final class SensorBridgeController {
         self.central = central
         self.configuration = configuration
         self.battery = battery
-        self.historyStorage = EveHistoryStorage(configurationFile: fileName)
-        self.histories = (try? historyStorage.read()) ?? [:]
+        self.historyStore = try EveHistoryStore(configurationFile: fileName, limit: configuration.historyLimit)
         self.server = try HAP.Server(device: hapDevice, listenPort: Int(port))
         self.hapDevice.delegate = self
     }
@@ -82,6 +82,7 @@ final class SensorBridgeController {
     // MARK: - Methods
     
     func scan() async throws {
+        await loadHistories()
         while true {
             do {
                 try await scanOnce()
@@ -238,7 +239,7 @@ private extension SensorBridgeController {
         Task {
             do {
                 let count = try await accessory.sync(central: central)
-                saveHistory(of: accessory)
+                await saveHistory(of: accessory)
                 log?("Downloaded \(count) history entries from \(peripheral), firmware \((accessory as? HAP.Accessory)?.info.firmwareRevision?.value ?? "")")
             }
             catch {
@@ -256,10 +257,24 @@ private extension SensorBridgeController {
         await completion.wait()
     }
     
-    func saveHistory(of accessory: any EveHistoryAccessory) {
-        histories[accessory.historyIdentifier] = accessory.history.history
+    /// Loads the stored history.
+    func loadHistories() async {
         do {
-            try historyStorage.write(histories)
+            histories = try await historyStore.read()
+        }
+        catch {
+            log?("Unable to read history. \(error)")
+        }
+    }
+    
+    func saveHistory(of accessory: any EveHistoryAccessory) async {
+        let identifier = accessory.historyIdentifier
+        let newValue = accessory.history.history
+        let oldValue = histories[identifier] ?? EveHistory()
+        do {
+            try await historyStore.save(newValue, replacing: oldValue, for: identifier)
+            // after a failed save, the next one writes the same entries again
+            histories[identifier] = newValue
         }
         catch {
             log?("Unable to save history. \(error)")

@@ -23,6 +23,15 @@ public struct EveHistory: Equatable, Hashable, Codable, Sendable {
         self.referenceDate = nil
         self.entries = []
     }
+
+    /// Restores a stored history.
+    ///
+    /// - Parameter entries: Entries with consecutive indices, oldest first.
+    public init(referenceDate: Date, entries: [Entry]) {
+        assert(zip(entries, entries.dropFirst()).allSatisfy { $0.index + 1 == $1.index }, "Entries must have consecutive indices")
+        self.referenceDate = referenceDate
+        self.entries = entries
+    }
 }
 
 public extension EveHistory {
@@ -53,6 +62,13 @@ public extension EveHistory {
 
         /// Relative humidity in percent.
         public let humidity: Float
+
+        public init(index: UInt32, date: Date, temperature: Float, humidity: Float) {
+            self.index = index
+            self.date = date
+            self.temperature = temperature
+            self.humidity = humidity
+        }
     }
 
     struct Sample: Equatable, Hashable, Sendable {

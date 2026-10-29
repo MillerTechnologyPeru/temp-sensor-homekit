@@ -21,10 +21,14 @@ public struct SensorConfiguration: Equatable, Hashable, Codable {
     
     public var sensors: [Sensor]
     
+    /// Maximum number of history entries stored for each sensor.
+    public var historyLimit: UInt
+    
     public init(
         name: String = "Sensor Bridge",
         sensors: [Sensor] = [],
         timeout: UInt = 60 * 5,
+        historyLimit: UInt = 100_000,
         serialNumber: String = UUID().uuidString,
         model: String = "Bridge",
         manufacturer: String = "Miller Technology"
@@ -32,6 +36,7 @@ public struct SensorConfiguration: Equatable, Hashable, Codable {
         self.name = name
         self.sensors = sensors
         self.timeout = timeout
+        self.historyLimit = historyLimit
         self.serialNumber = serialNumber
         self.model = model
         self.manufacturer = manufacturer

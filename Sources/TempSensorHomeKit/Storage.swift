@@ -23,6 +23,9 @@ public struct Configuration: Equatable, Hashable, Codable {
     
     public var timeout: UInt
     
+    /// Maximum number of history entries stored for each sensor. Defaults to 100,000.
+    public var historyLimit: UInt?
+    
     internal var homeKit: HomeKit?
 }
 
@@ -39,7 +42,8 @@ public extension Configuration {
             model: configuration.model,
             manufacturer: configuration.manufacturer,
             sensors: configuration.sensors,
-            timeout: configuration.timeout
+            timeout: configuration.timeout,
+            historyLimit: configuration.historyLimit
         )
     }
 }
@@ -51,6 +55,7 @@ public extension SensorConfiguration {
             name: configuration.name,
             sensors: configuration.sensors,
             timeout: configuration.timeout,
+            historyLimit: configuration.historyLimit ?? SensorConfiguration().historyLimit,
             serialNumber: configuration.serialNumber,
             model: configuration.model,
             manufacturer: configuration.manufacturer
@@ -160,32 +165,14 @@ final class ConfigurationHAPStorage: Storage {
     }
 }
 
-/// Eve history of each sensor, stored next to the configuration file.
-final class EveHistoryStorage {
+extension EveHistoryStore {
     
-    private let encoder = JSONEncoder()
-    
-    private let decoder = JSONDecoder()
-    
-    let filename: String
-    
-    init(configurationFile: String) {
-        self.filename = URL(fileURLWithPath: configurationFile)
+    /// Opens the history database stored next to the configuration file.
+    init(configurationFile: String, limit: UInt) throws {
+        let path = URL(fileURLWithPath: configurationFile)
             .deletingLastPathComponent()
-            .appendingPathComponent("history.json")
+            .appendingPathComponent("history.sqlite")
             .path
-    }
-    
-    func read() throws -> [String: EveHistory] {
-        guard FileManager.default.fileExists(atPath: filename) else {
-            return [:]
-        }
-        let jsonData = try Data(contentsOf: URL(fileURLWithPath: filename), options: [.mappedIfSafe])
-        return try decoder.decode([String: EveHistory].self, from: jsonData)
-    }
-    
-    func write(_ newValue: [String: EveHistory]) throws {
-        let jsonData = try encoder.encode(newValue)
-        try jsonData.write(to: URL(fileURLWithPath: filename), options: [.atomic])
+        try self.init(path: path, limit: limit)
     }
 }

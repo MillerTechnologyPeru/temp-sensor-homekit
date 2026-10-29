@@ -1,5 +1,5 @@
 {
-  "originHash" : "350434302dd2a65868b1afc6adaa7405f2d5adaa99ee6c06a23c22c29d798bbe",
+  "originHash" : "f7d22c45ad80e8d6b2a7b5d582c878a12a0ccdbe0546eb14b9dcc45567b36355",
   "pins" : [
     {
       "identity" : "bigint",
@@ -26,6 +26,24 @@
       "state" : {
         "branch" : "master",
         "revision" : "706cd383d1ca09cbdc9f682a9020a48043405270"
+      }
+    },
+    {
+      "identity" : "coremodel",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/PureSwift/CoreModel.git",
+      "state" : {
+        "revision" : "456c3e1daa14f5fc719ca48f26ed75e0f1378ca4",
+        "version" : "2.11.1"
+      }
+    },
+    {
+      "identity" : "coremodel-sqlite",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/PureSwift/CoreModel-SQLite.git",
+      "state" : {
+        "revision" : "b413e5d6df1581836eb2c11eb4a5e21e9d32c6b0",
+        "version" : "0.3.3"
       }
     },
     {
@@ -92,6 +110,15 @@
       }
     },
     {
+      "identity" : "sqlite",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/PureSwift/SQLite",
+      "state" : {
+        "revision" : "507ed30d530174bc6a3b03a88a948238c7767e59",
+        "version" : "0.2.2"
+      }
+    },
+    {
       "identity" : "srp",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/Bouke/SRP.git",
@@ -152,6 +179,15 @@
       "state" : {
         "revision" : "6db9d9abd92ad7399b8a564cafbb87d3507245fa",
         "version" : "2.104.0"
+      }
+    },
+    {
+      "identity" : "swift-sqlcipher",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/PureSwift/swift-sqlcipher",
+      "state" : {
+        "revision" : "37a25816c4cea90b3bc6f428fc3896b82dc58915",
+        "version" : "0.1.0"
       }
     },
     {
