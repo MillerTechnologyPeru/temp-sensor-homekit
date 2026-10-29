@@ -159,3 +159,33 @@ final class ConfigurationHAPStorage: Storage {
         try writeConfiguration(configuration)
     }
 }
+
+/// Eve history of each sensor, stored next to the configuration file.
+final class EveHistoryStorage {
+    
+    private let encoder = JSONEncoder()
+    
+    private let decoder = JSONDecoder()
+    
+    let filename: String
+    
+    init(configurationFile: String) {
+        self.filename = URL(fileURLWithPath: configurationFile)
+            .deletingLastPathComponent()
+            .appendingPathComponent("history.json")
+            .path
+    }
+    
+    func read() throws -> [String: EveHistory] {
+        guard FileManager.default.fileExists(atPath: filename) else {
+            return [:]
+        }
+        let jsonData = try Data(contentsOf: URL(fileURLWithPath: filename), options: [.mappedIfSafe])
+        return try decoder.decode([String: EveHistory].self, from: jsonData)
+    }
+    
+    func write(_ newValue: [String: EveHistory]) throws {
+        let jsonData = try encoder.encode(newValue)
+        try jsonData.write(to: URL(fileURLWithPath: filename), options: [.atomic])
+    }
+}

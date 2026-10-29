@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import Foundation
 import Bluetooth
 import GATT
 import HAP
@@ -27,16 +26,27 @@ final class GoveeThermometerAccessory: HAP.Accessory.Thermometer, SensorAccessor
     
     let battery = BatteryService()
     
+    let history = EveHistoryService()
+    
+    let model: GoveeModel
+    
+    let historyIdentifier: String
+    
+    /// Last time the history was downloaded, or tried to be.
+    private(set) var lastSync: Date?
+    
     init(peripheral: NativeCentral.Peripheral, advertisement: GoveeAccessory.Thermometer, configuration: SensorConfiguration.Sensor?) {
         self.peripheral = peripheral
         self.configuration = configuration
+        self.model = advertisement.id.model
+        self.historyIdentifier = advertisement.id.rawValue
         let id = advertisement.id.rawValue
         let info = Service.Info.Info(
             name: configuration?.name ?? "Govee Thermometer Sensor",
             serialNumber: id,
             manufacturer: "Shenzhen Intellirocks Tech. Co., Ltd.",
             model: configuration?.model ?? advertisement.id.model.rawValue,
-            firmwareRevision: "1.0.0"
+            firmwareRevision: Self.defaultFirmwareRevision
         )/*
         self.bridgeState = AccessoryBridgingState(
             reachable: true,
@@ -49,7 +59,8 @@ final class GoveeThermometerAccessory: HAP.Accessory.Thermometer, SensorAccessor
             additionalServices: [
                 //bridgeState,
                 humidity,
-                battery
+                battery,
+                history
             ]
         )
         self.update(advertisement: advertisement)
@@ -63,6 +74,72 @@ final class GoveeThermometerAccessory: HAP.Accessory.Thermometer, SensorAccessor
         self.temperatureSensor.currentTemperature.value = advertisement.temperature + (configuration?.calibration?.temperature ?? 0.0)
         self.humidity.currentRelativeHumidity.value = advertisement.humidity + (configuration?.calibration?.humidity ?? 0.0)
     }
+}
+
+// MARK: - EveHistoryAccessory
+
+extension GoveeThermometerAccessory: EveHistoryAccessory {
+    
+    /// Time between history downloads.
+    static var syncInterval: TimeInterval { 30 * 60 }
+    
+    /// Longest history requested in one download.
+    static var maxHistoryMinutes: TimeInterval { 24 * 60 }
+    
+    var needsSync: Bool {
+        lastSync.map { Date().timeIntervalSince($0) >= Self.syncInterval } ?? true
+    }
+    
+    /// Connects to the thermometer, reads its firmware version and downloads the readings since the last stored entry.
+    ///
+    /// - Returns: The number of history entries added.
+    @discardableResult
+    func sync(central: NativeCentral) async throws -> Int {
+        lastSync = Date()
+        let connection = try await central.connect(to: peripheral, model: model)
+        let count: Int
+        do {
+            count = try await sync(connection: connection)
+        }
+        catch {
+            await connection.disconnect()
+            throw error
+        }
+        await connection.disconnect()
+        return count
+    }
+    
+    private func sync(connection: GoveeConnection<NativeCentral>) async throws -> Int {
+        self.lastSeen = Date()
+        self.reachable = true
+        if info.firmwareRevision?.value == Self.defaultFirmwareRevision,
+           let version = try await connection.send(GoveeQuery.thermometerFirmwareVersion).thermometerFirmwareVersion {
+            info.firmwareRevision?.value = version
+        }
+        // download minutes since the last entry
+        let now = Date()
+        // the H5072 disconnects partway through long downloads (after about 600 frames, 2.5 days)
+        let maxMinutes = Self.maxHistoryMinutes
+        let minutes = history.history.lastDate.map { (now.timeIntervalSince($0) / 60).rounded(.up) } ?? maxMinutes
+        guard minutes >= EveHistory.interval / 60 else {
+            return 0
+        }
+        let readings = try await connection.thermometerHistory(minutes: UInt16(min(minutes, maxMinutes)))
+        let samples = readings.map {
+            EveHistory.Sample(
+                date: now - TimeInterval($0.minutesAgo) * 60,
+                temperature: $0.temperature + (configuration?.calibration?.temperature ?? 0.0),
+                humidity: $0.humidity + (configuration?.calibration?.humidity ?? 0.0)
+            )
+        }
+        return history.history.append(averaging: samples, now: now)
+    }
+}
+
+extension GoveeThermometerAccessory {
+    
+    /// Firmware revision shown until the thermometer reports its own.
+    static var defaultFirmwareRevision: String { "1.0.0" }
 }
 
 extension GoveeThermometerAccessory {

@@ -43,7 +43,7 @@
       "location" : "https://github.com/MillerTechnologyPeru/Govee.git",
       "state" : {
         "branch" : "master",
-        "revision" : "b5fea3f386a16a2b1d7079a86b887c6a809a1127"
+        "revision" : "72fdc8e4f080c65bb58a3e355c76b8583ebb8df9"
       }
     },
     {
@@ -52,7 +52,7 @@
       "location" : "https://github.com/MillerTechnologyPeru/HAP.git",
       "state" : {
         "branch" : "master",
-        "revision" : "e3e9ab4b8c12a9f7f3f09ec36b6cd9aea18e79f3"
+        "revision" : "d7d1333b593224838689ca0f4c35a8b9845b3eb5"
       }
     },
     {
