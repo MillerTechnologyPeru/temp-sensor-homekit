@@ -38,6 +38,9 @@ final class SensorBridgeController {
     
     private var histories: [String: EveHistory]
     
+    /// Peripherals with a history download in progress.
+    private var syncing = Set<NativeCentral.Peripheral>()
+    
     // MARK: - Initialization
     
     public init(
@@ -195,17 +198,10 @@ final class SensorBridgeController {
     private func connect() async {
         for (peripheral, accessory) in accessories {
             if let historyAccessory = accessory as? any EveHistoryAccessory {
-                guard historyAccessory.needsSync else {
+                guard historyAccessory.needsSync, syncing.contains(peripheral) == false else {
                     continue
                 }
-                do {
-                    let count = try await historyAccessory.sync(central: central)
-                    saveHistory(of: historyAccessory)
-                    log?("Downloaded \(count) history entries from \(peripheral), firmware \(accessory.info.firmwareRevision?.value ?? "")")
-                }
-                catch {
-                    log?("Unable to download history from \(peripheral). \(error)")
-                }
+                await sync(historyAccessory)
                 continue
             }
             guard let connectable = accessory as? any ConnectableSensorAccessory else {
@@ -227,6 +223,38 @@ final class SensorBridgeController {
 // MARK: - Eve History
 
 private extension SensorBridgeController {
+    
+    /// Time to wait for a history download before scanning again.
+    static var syncTimeout: TimeInterval { 4 * 60 }
+    
+    /// Downloads the accessory's history, waiting at most ``syncTimeout``.
+    ///
+    /// A Bluetooth request can wait forever behind one that never completed,
+    /// so a download that takes too long keeps running in the background while scanning continues.
+    func sync(_ accessory: any EveHistoryAccessory) async {
+        let peripheral = accessory.peripheral
+        syncing.insert(peripheral)
+        let completion = SyncCompletion()
+        Task {
+            do {
+                let count = try await accessory.sync(central: central)
+                saveHistory(of: accessory)
+                log?("Downloaded \(count) history entries from \(peripheral), firmware \((accessory as? HAP.Accessory)?.info.firmwareRevision?.value ?? "")")
+            }
+            catch {
+                log?("Unable to download history from \(peripheral). \(error)")
+            }
+            syncing.remove(peripheral)
+            completion.finish()
+        }
+        Task {
+            try? await Task.sleep(timeInterval: Self.syncTimeout)
+            if completion.finish() {
+                log?("History download from \(peripheral) is taking longer than \(Int(Self.syncTimeout)) seconds, continuing in the background")
+            }
+        }
+        await completion.wait()
+    }
     
     func saveHistory(of accessory: any EveHistoryAccessory) {
         histories[accessory.historyIdentifier] = accessory.history.history
@@ -323,5 +351,33 @@ internal extension HAP.Device {
     ) {
         let bridge = Accessory(info: bridgeInfo, type: .bridge, services: services)
         self.init(setupCode: setupCode, storage: storage, accessory: bridge)
+    }
+}
+
+/// Resumes one waiter when the first of several events happens.
+@MainActor
+private final class SyncCompletion {
+    
+    private var isFinished = false
+    
+    private var continuation: CheckedContinuation<Void, Never>?
+    
+    func wait() async {
+        guard isFinished == false else {
+            return
+        }
+        await withCheckedContinuation { continuation = $0 }
+    }
+    
+    /// Returns whether this call finished the wait.
+    @discardableResult
+    func finish() -> Bool {
+        guard isFinished == false else {
+            return false
+        }
+        isFinished = true
+        continuation?.resume()
+        continuation = nil
+        return true
     }
 }
