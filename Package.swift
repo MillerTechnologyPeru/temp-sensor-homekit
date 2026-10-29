@@ -51,6 +51,14 @@ let package = Package(
         .package(
             url: "https://github.com/MillerTechnologyPeru/XiaomiBluetooth.git",
             branch: "master"
+        ),
+        .package(
+            url: "https://github.com/PureSwift/CoreModel.git",
+            from: "2.11.0"
+        ),
+        .package(
+            url: "https://github.com/PureSwift/CoreModel-SQLite.git",
+            from: "0.3.3"
         )
     ],
     targets: [
@@ -112,6 +120,14 @@ let package = Package(
         .target(
             name: "CoreSensor",
             dependencies: [
+                .product(
+                    name: "CoreModel",
+                    package: "CoreModel"
+                ),
+                .product(
+                    name: "CoreModelSQLite",
+                    package: "CoreModel-SQLite"
+                ),
                 .product(
                     name: "Bluetooth",
                     package: "Bluetooth"

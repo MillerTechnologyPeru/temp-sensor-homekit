@@ -160,32 +160,35 @@ final class ConfigurationHAPStorage: Storage {
     }
 }
 
-/// Eve history of each sensor, stored next to the configuration file.
-final class EveHistoryStorage {
+extension EveHistoryStore {
     
-    private let encoder = JSONEncoder()
+    /// Opens the history database stored next to the configuration file.
+    init(configurationFile: String) throws {
+        let path = URL(fileURLWithPath: configurationFile)
+            .deletingLastPathComponent()
+            .appendingPathComponent("history.sqlite")
+            .path
+        try self.init(path: path)
+    }
     
-    private let decoder = JSONDecoder()
-    
-    let filename: String
-    
-    init(configurationFile: String) {
-        self.filename = URL(fileURLWithPath: configurationFile)
+    /// Imports the history stored by earlier versions in `history.json`, next to the database.
+    ///
+    /// The file is renamed to `history.json.migrated` once imported.
+    ///
+    /// - Returns: The number of sensors imported.
+    func migrateJSON() async throws -> Int {
+        let url = URL(fileURLWithPath: path)
             .deletingLastPathComponent()
             .appendingPathComponent("history.json")
-            .path
-    }
-    
-    func read() throws -> [String: EveHistory] {
-        guard FileManager.default.fileExists(atPath: filename) else {
-            return [:]
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            return 0
         }
-        let jsonData = try Data(contentsOf: URL(fileURLWithPath: filename), options: [.mappedIfSafe])
-        return try decoder.decode([String: EveHistory].self, from: jsonData)
-    }
-    
-    func write(_ newValue: [String: EveHistory]) throws {
-        let jsonData = try encoder.encode(newValue)
-        try jsonData.write(to: URL(fileURLWithPath: filename), options: [.atomic])
+        let jsonData = try Data(contentsOf: url, options: [.mappedIfSafe])
+        let histories = try JSONDecoder().decode([String: EveHistory].self, from: jsonData)
+        for (sensor, history) in histories {
+            try await save(history, for: sensor)
+        }
+        try FileManager.default.moveItem(at: url, to: url.appendingPathExtension("migrated"))
+        return histories.count
     }
 }
