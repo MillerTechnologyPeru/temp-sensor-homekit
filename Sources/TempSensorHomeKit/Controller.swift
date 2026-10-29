@@ -194,14 +194,14 @@ final class SensorBridgeController {
     
     private func connect() async {
         for (peripheral, accessory) in accessories {
-            if let govee = accessory as? GoveeThermometerAccessory {
-                guard govee.needsSync else {
+            if let historyAccessory = accessory as? any EveHistoryAccessory {
+                guard historyAccessory.needsSync else {
                     continue
                 }
                 do {
-                    let count = try await govee.sync(central: central)
-                    saveHistory(of: govee)
-                    log?("Downloaded \(count) history entries from \(peripheral), firmware \(govee.info.firmwareRevision?.value ?? "")")
+                    let count = try await historyAccessory.sync(central: central)
+                    saveHistory(of: historyAccessory)
+                    log?("Downloaded \(count) history entries from \(peripheral), firmware \(accessory.info.firmwareRevision?.value ?? "")")
                 }
                 catch {
                     log?("Unable to download history from \(peripheral). \(error)")

@@ -36,4 +36,18 @@ protocol EveHistoryAccessory: SensorAccessory {
     var historyIdentifier: String { get }
     
     var history: EveHistoryService { get }
+    
+    /// Whether it is time to download the sensor's history again.
+    var needsSync: Bool { get }
+    
+    /// Connects to the sensor and adds its stored readings to the history.
+    ///
+    /// - Returns: The number of history entries added.
+    func sync(central: NativeCentral) async throws -> Int
+}
+
+extension EveHistoryAccessory {
+    
+    /// Time to wait before trying again after a failed history download.
+    static var syncRetryInterval: TimeInterval { 5 * 60 }
 }
