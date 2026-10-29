@@ -28,3 +28,12 @@ protocol ConnectableSensorAccessory: SensorAccessory {
     
     func update(connection: GATTConnection<NativeCentral>) async throws
 }
+
+/// Sensor accessory that exposes its readings to the Eve app as history.
+protocol EveHistoryAccessory: SensorAccessory {
+    
+    /// Key for the history in persistent storage.
+    var historyIdentifier: String { get }
+    
+    var history: EveHistoryService { get }
+}

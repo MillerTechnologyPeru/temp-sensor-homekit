@@ -34,6 +34,10 @@ final class SensorBridgeController {
     
     private var accessories = [NativeCentral.Peripheral: HAP.Accessory]()
     
+    private let historyStorage: EveHistoryStorage
+    
+    private var histories: [String: EveHistory]
+    
     // MARK: - Initialization
     
     public init(
@@ -66,6 +70,8 @@ final class SensorBridgeController {
         self.central = central
         self.configuration = configuration
         self.battery = battery
+        self.historyStorage = EveHistoryStorage(configurationFile: fileName)
+        self.histories = (try? historyStorage.read()) ?? [:]
         self.server = try HAP.Server(device: hapDevice, listenPort: Int(port))
         self.hapDevice.delegate = self
     }
@@ -151,6 +157,9 @@ final class SensorBridgeController {
             accessory.update(advertisement: sensorAdvertisement)
         } else {
             let newAccessory = T.init(peripheral: scanData.peripheral, advertisement: sensorAdvertisement, configuration: configuration(for: scanData))
+            if let historyAccessory = newAccessory as? any EveHistoryAccessory {
+                historyAccessory.history.history = histories[historyAccessory.historyIdentifier] ?? EveHistory()
+            }
             self.accessories[scanData.peripheral] = newAccessory
             self.hapDevice.addAccessories([newAccessory])
             log?("Found \(T.Advertisement.sensorType) \(scanData.peripheral.description)")
@@ -185,6 +194,20 @@ final class SensorBridgeController {
     
     private func connect() async {
         for (peripheral, accessory) in accessories {
+            if let govee = accessory as? GoveeThermometerAccessory {
+                guard govee.needsSync else {
+                    continue
+                }
+                do {
+                    let count = try await govee.sync(central: central)
+                    saveHistory(of: govee)
+                    log?("Downloaded \(count) history entries from \(peripheral), firmware \(govee.info.firmwareRevision?.value ?? "")")
+                }
+                catch {
+                    log?("Unable to download history from \(peripheral). \(error)")
+                }
+                continue
+            }
             guard let connectable = accessory as? any ConnectableSensorAccessory else {
                 continue
             }
@@ -197,6 +220,21 @@ final class SensorBridgeController {
             catch {
                 log?("Unable to connect and update \(peripheral). \(error)")
             }
+        }
+    }
+}
+
+// MARK: - Eve History
+
+private extension SensorBridgeController {
+    
+    func saveHistory(of accessory: any EveHistoryAccessory) {
+        histories[accessory.historyIdentifier] = accessory.history.history
+        do {
+            try historyStorage.write(histories)
+        }
+        catch {
+            log?("Unable to save history. \(error)")
         }
     }
 }
