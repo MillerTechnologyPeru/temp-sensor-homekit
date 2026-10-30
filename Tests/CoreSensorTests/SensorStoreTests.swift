@@ -97,6 +97,24 @@ final class SensorStoreTests: XCTestCase {
         XCTAssertEqual(third, .history(a, history))
     }
 
+    func testUpdateKeepsHistory() async throws {
+        let store = try await makeStore(sensors: [a])
+        var history = EveHistory()
+        history.append(averaging: samples(3, from: start), now: .distantFuture)
+        try await store.saveHistory(history, replacing: EveHistory(), for: a)
+        // the scanner writes its copy of the sensor, without the history reference date
+        var value = sensor(a)
+        value.temperature = 22
+        try await store.update(value)
+        let stored = try await store.sensor(for: a)
+        XCTAssertEqual(stored?.temperature, 22)
+        XCTAssertEqual(stored?.historyReferenceDate, history.referenceDate)
+        // the history is still read after reopening
+        let reopened = try SensorStore(path: store.path)
+        let read = try await reopened.history(for: a)
+        XCTAssertEqual(read, history)
+    }
+
     func testEmptyHistory() async throws {
         let store = try await makeStore(sensors: [a])
         let history = try await store.history(for: a)
