@@ -9,9 +9,12 @@ import Foundation
 
 /// Temperature and humidity log in the format the Eve app downloads from the Eve history service.
 ///
-/// Uses the fakegato-history "custom" layout with only temperature and humidity fields.
+/// Uses the fakegato-history "custom" layout with temperature, and optionally humidity, fields.
 /// See https://github.com/simont77/fakegato-history
 public struct EveHistory: Equatable, Hashable, Codable, Sendable {
+
+    /// Fields in each entry.
+    public let fields: Fields
 
     /// Time of the reference entry (index 1). Entry times are relative to it.
     public private(set) var referenceDate: Date?
@@ -19,7 +22,8 @@ public struct EveHistory: Equatable, Hashable, Codable, Sendable {
     /// Stored entries, oldest first, with consecutive indices.
     public private(set) var entries: [Entry]
 
-    public init() {
+    public init(fields: Fields = .temperatureHumidity) {
+        self.fields = fields
         self.referenceDate = nil
         self.entries = []
     }
@@ -27,8 +31,9 @@ public struct EveHistory: Equatable, Hashable, Codable, Sendable {
     /// Restores a stored history.
     ///
     /// - Parameter entries: Entries with consecutive indices, oldest first.
-    public init(referenceDate: Date, entries: [Entry]) {
+    public init(fields: Fields = .temperatureHumidity, referenceDate: Date, entries: [Entry]) {
         assert(zip(entries, entries.dropFirst()).allSatisfy { $0.index + 1 == $1.index }, "Entries must have consecutive indices")
+        self.fields = fields
         self.referenceDate = referenceDate
         self.entries = entries
     }
@@ -45,11 +50,15 @@ public extension EveHistory {
     /// Maximum entries sent in one read of the history entries characteristic.
     static var entriesPerRead: Int { 11 }
 
-    /// Fields in each entry: temperature (`0102`) and humidity (`0202`), 2 bytes each.
-    static var signature: [UInt8] { [0x02, 0x01, 0x02, 0x02, 0x02] }
+    /// Fields stored in each entry.
+    enum Fields: String, Equatable, Hashable, Codable, Sendable, CaseIterable {
 
-    /// Bitmask of the fields present in each entry.
-    static var entryType: UInt8 { 0x03 }
+        /// Temperature and relative humidity.
+        case temperatureHumidity
+
+        /// Temperature only, for sensors without humidity.
+        case temperature
+    }
 
     struct Entry: Equatable, Hashable, Codable, Sendable {
 
@@ -60,7 +69,7 @@ public extension EveHistory {
         /// Temperature in degrees Celsius.
         public let temperature: Float
 
-        /// Relative humidity in percent.
+        /// Relative humidity in percent, `0` without a humidity field.
         public let humidity: Float
 
         public init(index: UInt32, date: Date, temperature: Float, humidity: Float) {
@@ -172,7 +181,7 @@ public extension EveHistory {
         data.append(littleEndian: entries.last.map { offset(of: $0.date) } ?? 0)
         data.append(littleEndian: UInt32(0)) // negative offset
         data.append(littleEndian: referenceTime)
-        data.append(contentsOf: Self.signature)
+        data.append(contentsOf: fields.signature)
         data.append(littleEndian: usedMemory)
         data.append(littleEndian: Self.memorySize)
         data.append(littleEndian: firstIndex)
@@ -218,17 +227,52 @@ public extension EveHistory {
             } else {
                 let entry = entries[Int(index - entries[0].index)]
                 assert(entry.index == index)
-                data.append(0x0E)
+                data.append(fields.entryLength)
                 data.append(littleEndian: index)
                 data.append(littleEndian: offset(of: entry.date))
-                data.append(Self.entryType)
+                data.append(fields.entryType)
                 data.append(littleEndian: Int16((entry.temperature * 100).rounded()))
-                data.append(littleEndian: UInt16((Swift.min(Swift.max(entry.humidity, 0), 100) * 100).rounded()))
+                if fields == .temperatureHumidity {
+                    data.append(littleEndian: UInt16((Swift.min(Swift.max(entry.humidity, 0), 100) * 100).rounded()))
+                }
             }
             index += 1
             count += 1
         }
         return (data, index)
+    }
+}
+
+internal extension EveHistory.Fields {
+
+    /// Fields in each entry: temperature (`0102`) and humidity (`0202`), 2 bytes each.
+    var signature: [UInt8] {
+        switch self {
+        case .temperatureHumidity:
+            return [0x02, 0x01, 0x02, 0x02, 0x02]
+        case .temperature:
+            return [0x01, 0x01, 0x02]
+        }
+    }
+
+    /// Bitmask of the fields present in each entry.
+    var entryType: UInt8 {
+        switch self {
+        case .temperatureHumidity:
+            return 0x03
+        case .temperature:
+            return 0x01
+        }
+    }
+
+    /// Length of each encoded entry, including the length byte.
+    var entryLength: UInt8 {
+        switch self {
+        case .temperatureHumidity:
+            return 0x0E
+        case .temperature:
+            return 0x0C
+        }
     }
 }
 
