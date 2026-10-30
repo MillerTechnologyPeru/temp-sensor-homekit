@@ -59,6 +59,24 @@ final class EveHistoryTests: XCTestCase {
         XCTAssertEqual(history.entries(from: 3)?.data.count, 14)
     }
 
+    func testTemperatureEncoding() {
+        var history = EveHistory(fields: .temperature)
+        history.append(date: start, temperature: 20.92, humidity: 0)
+        history.append(date: start + 600, temperature: -1.5, humidity: 0)
+        XCTAssertEqual(history.status.hexString, "58020000" + "00000000" + "C0270900" + "010102" + "0400" + "C00F" + "00000000" + "000000000101")
+        guard let (data, next) = history.entries(from: 0) else {
+            XCTFail()
+            return
+        }
+        XCTAssertEqual(next, 4)
+        XCTAssertEqual(data.hexString,
+            "15" + "01000000" + "01000000" + "81" + "C0270900" + "00000000000000" +
+            "0C" + "02000000" + "00000000" + "01" + "2C08" +
+            "0C" + "03000000" + "58020000" + "01" + "6AFF"
+        )
+        XCTAssertEqual(history.entries(from: 3)?.data.count, 12)
+    }
+
     func testRequestedIndex() {
         XCTAssertEqual(EveHistory.requestedIndex(Data([0x01, 0x14, 0x01, 0x00, 0x00, 0x00, 0x00])), 1)
         XCTAssertEqual(EveHistory.requestedIndex(Data([0x01, 0x14, 0x2A, 0x01, 0x00, 0x00, 0x00])), 0x012A)

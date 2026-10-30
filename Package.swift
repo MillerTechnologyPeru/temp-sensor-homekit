@@ -59,6 +59,10 @@ let package = Package(
         .package(
             url: "https://github.com/PureSwift/CoreModel-SQLite.git",
             from: "0.3.3"
+        ),
+        .package(
+            url: "https://github.com/apple/swift-collections.git",
+            from: "1.1.0"
         )
     ],
     targets: [
@@ -127,6 +131,10 @@ let package = Package(
                 .product(
                     name: "CoreModelSQLite",
                     package: "CoreModel-SQLite"
+                ),
+                .product(
+                    name: "DequeModule",
+                    package: "swift-collections"
                 ),
                 .product(
                     name: "Bluetooth",

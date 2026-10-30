@@ -165,13 +165,13 @@ final class ConfigurationHAPStorage: Storage {
     }
 }
 
-extension EveHistoryStore {
+extension SensorStore {
     
-    /// Opens the history database stored next to the configuration file.
+    /// Opens the sensor database stored next to the configuration file.
     init(configurationFile: String, limit: UInt) throws {
         let path = URL(fileURLWithPath: configurationFile)
             .deletingLastPathComponent()
-            .appendingPathComponent("history.sqlite")
+            .appendingPathComponent("sensors.sqlite")
             .path
         try self.init(path: path, limit: limit)
     }
