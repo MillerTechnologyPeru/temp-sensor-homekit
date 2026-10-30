@@ -20,27 +20,23 @@ final class SensorBridgeController {
     
     // MARK: - Properties
     
-    var log: ((String) -> ())?
+    var log: ((String) -> ())? {
+        didSet { scanner.log = log }
+    }
         
     private let hapDevice: HAP.Device
     
     private let server: HAP.Server
     
-    private let central: NativeCentral
-    
     private let battery: BatterySource?
     
     let configuration: SensorConfiguration
     
-    private var accessories = [NativeCentral.Peripheral: HAP.Accessory]()
+    private let store: SensorStore
     
-    private let historyStore: EveHistoryStore
+    private let scanner: SensorScanner
     
-    /// Last saved history of each sensor.
-    private var histories = [String: EveHistory]()
-    
-    /// Peripherals with a history download in progress.
-    private var syncing = Set<NativeCentral.Peripheral>()
+    private var accessories = [Sensor.ID: SensorAccessory]()
     
     // MARK: - Initialization
     
@@ -70,215 +66,110 @@ final class SensorBridgeController {
             storage: storage,
             services: services
         )
+        let store = try SensorStore(configurationFile: fileName, limit: configuration.historyLimit)
         self.hapDevice = hapDevice
-        self.central = central
         self.configuration = configuration
         self.battery = battery
-        self.historyStore = try EveHistoryStore(configurationFile: fileName, limit: configuration.historyLimit)
+        self.store = store
+        self.scanner = SensorScanner(central: central, store: store, configuration: configuration)
         self.server = try HAP.Server(device: hapDevice, listenPort: Int(port))
         self.hapDevice.delegate = self
     }
     
     // MARK: - Methods
     
+    /// Shows the stored sensors in HomeKit, then scans for sensors, updating HomeKit from the store.
     func scan() async throws {
-        await loadHistories()
-        while true {
-            do {
-                try await scanOnce()
-            }
-            catch {
-                // HCI requests can time out while advertising reports flood the HCI socket
-                log?("Scan failed. \(error)")
-            }
-            // remove devices not found
-            removeUnreachable()
-            // connect after scan
-            await connect()
-            // scan again
-            try await Task.sleep(timeInterval: 1.0)
+        await loadSensors()
+        Task {
+            await observeChanges()
         }
-    }
-
-    private func scanOnce() async throws {
-        // start scan
-        #if os(Linux)
-        let stream = try await central.scan(
-            filterDuplicates: false,
-            parameters: HCILESetScanParameters(
-                type: .active,
-                interval:  .max,
-                window: .max,
-                addressType: .public,
-                filterPolicy: .accept
-            )
-        )
-        #else
-        let stream = try await central.scan(
-            filterDuplicates: false
-        )
-        #endif
-        // scan timeout
-        _ = Task {
-            try await Task.sleep(timeInterval: 45.0)
-            stream.stop()
+        Task {
+            await updateReachability()
         }
-        for try await scanData in stream {
-            if bridge(GEThermometerAccessory.self, from: scanData) {
-                continue
-            } else if bridge(GoveeThermometerAccessory.self, from: scanData) {
-                continue
-            } else if bridge(InkbirdThermometerAccessory.self, from: scanData) {
-                continue
-            } else if bridge(TirePressureSensorAccessory.self, from: scanData) {
-                continue
-            } else if let manufacturerData = scanData.advertisementData.manufacturerData,
-                manufacturerData.companyIdentifier == GETemperatureSensor.companyIdentifier {
-                log?("Unable to parse GE \(manufacturerData)")
-            } else if let miBeacon = MiBeacon(scanData.advertisementData),
-                miBeacon.address != nil,
-                bridge(XiaomiThermometerAccessory.self, from: scanData) {
-                continue
-            } else {
-                continue
-            }
-        }
-    }
-    
-    @discardableResult
-    private func bridge<T>(
-        _ accessoryType: T.Type,
-        from scanData: ScanData<NativeCentral.Peripheral, NativeCentral.Advertisement>
-    ) -> Bool where T: SensorAccessory, T: HAP.Accessory {
-        guard let sensorAdvertisement = T.Advertisement.init(scanData.advertisementData) else {
-            return false
-        }
-        guard filter(scanData) else {
-            log?("Ignoring \(T.Advertisement.sensorType) \(scanData.peripheral.description)")
-            return false
-        }
-        if let accessory = self.accessories[scanData.peripheral] as? T {
-            accessory.update(advertisement: sensorAdvertisement)
-        } else {
-            let newAccessory = T.init(peripheral: scanData.peripheral, advertisement: sensorAdvertisement, configuration: configuration(for: scanData))
-            if let historyAccessory = newAccessory as? any EveHistoryAccessory {
-                historyAccessory.history.history = histories[historyAccessory.historyIdentifier] ?? EveHistory()
-            }
-            self.accessories[scanData.peripheral] = newAccessory
-            self.hapDevice.addAccessories([newAccessory])
-            log?("Found \(T.Advertisement.sensorType) \(scanData.peripheral.description)")
-        }
-        return true
-    }
-    
-    private func filter(_ scanData: ScanData<NativeCentral.Peripheral, NativeCentral.Advertisement>) -> Bool {
-        // filtering disabled
-        guard configuration.sensors.isEmpty == false else {
-            return true
-        }
-        return configuration(for: scanData) != nil
-    }
-    
-    private func configuration(for scanData: ScanData<NativeCentral.Peripheral, NativeCentral.Advertisement>) -> SensorConfiguration.Sensor? {
-        return configuration.sensors
-            .first(where: { $0.id == scanData.peripheral.description || $0.id == scanData.advertisementData.localName })
-    }
-    
-    private func removeUnreachable() {
-        let timeout = TimeInterval(self.configuration.timeout)
-        for (peripheral, accessory) in accessories {
-            let lastSeen = (accessory as? any SensorAccessory)!.lastSeen
-            if Date().timeIntervalSince(lastSeen) > timeout {
-                self.accessories[peripheral] = nil // Remove accessory
-                self.hapDevice.removeAccessories([accessory])
-                log?("Removed unreachable \(peripheral)")
-            }
-        }
-    }
-    
-    private func connect() async {
-        for (peripheral, accessory) in accessories {
-            if let historyAccessory = accessory as? any EveHistoryAccessory {
-                guard historyAccessory.needsSync, syncing.contains(peripheral) == false else {
-                    continue
-                }
-                await sync(historyAccessory)
-                continue
-            }
-            guard let connectable = accessory as? any ConnectableSensorAccessory else {
-                continue
-            }
-            do {
-                // connect and update
-                try await central.connection(for: peripheral) { connection in
-                    try await connectable.update(connection: connection)
-                }
-            }
-            catch {
-                log?("Unable to connect and update \(peripheral). \(error)")
-            }
-        }
+        try await scanner.run()
     }
 }
 
-// MARK: - Eve History
+// MARK: - HomeKit
 
 private extension SensorBridgeController {
     
-    /// Time to wait for a history download before scanning again.
-    static var syncTimeout: TimeInterval { 4 * 60 }
+    /// Time between checks for sensors that stopped being found.
+    static var reachabilityInterval: TimeInterval { 30 }
     
-    /// Downloads the accessory's history, waiting at most ``syncTimeout``.
-    ///
-    /// A Bluetooth request can wait forever behind one that never completed,
-    /// so a download that takes too long keeps running in the background while scanning continues.
-    func sync(_ accessory: any EveHistoryAccessory) async {
-        let peripheral = accessory.peripheral
-        syncing.insert(peripheral)
-        let completion = SyncCompletion()
-        Task {
+    var timeout: TimeInterval {
+        TimeInterval(configuration.timeout)
+    }
+    
+    /// Adds the stored sensors, with their last values.
+    func loadSensors() async {
+        do {
+            for sensor in try await store.sensors() {
+                await add(sensor)
+            }
+        }
+        catch {
+            log?("Unable to read sensors. \(error)")
+        }
+    }
+    
+    /// Updates the accessories as the scanner writes to the store.
+    func observeChanges() async {
+        for await change in store.changes {
+            switch change {
+            case let .sensor(sensor):
+                if let accessory = accessories[sensor.id] {
+                    accessory.update(sensor, timeout: timeout)
+                } else {
+                    await add(sensor)
+                }
+            case let .history(id, history):
+                accessories[id]?.history.history = history
+            }
+        }
+    }
+    
+    /// Shows sensors not found within the timeout as unreachable.
+    func updateReachability() async {
+        while true {
+            try? await Task.sleep(timeInterval: Self.reachabilityInterval)
             do {
-                let count = try await accessory.sync(central: central)
-                await saveHistory(of: accessory)
-                log?("Downloaded \(count) history entries from \(peripheral), firmware \((accessory as? HAP.Accessory)?.info.firmwareRevision?.value ?? "")")
+                for sensor in try await store.sensors() {
+                    accessories[sensor.id]?.updateReachability(lastSeen: sensor.lastSeen, timeout: timeout)
+                }
             }
             catch {
-                log?("Unable to download history from \(peripheral). \(error)")
+                log?("Unable to read sensors. \(error)")
             }
-            syncing.remove(peripheral)
-            completion.finish()
-        }
-        Task {
-            try? await Task.sleep(timeInterval: Self.syncTimeout)
-            if completion.finish() {
-                log?("History download from \(peripheral) is taking longer than \(Int(Self.syncTimeout)) seconds, continuing in the background")
-            }
-        }
-        await completion.wait()
-    }
-    
-    /// Loads the stored history.
-    func loadHistories() async {
-        do {
-            histories = try await historyStore.read()
-        }
-        catch {
-            log?("Unable to read history. \(error)")
         }
     }
     
-    func saveHistory(of accessory: any EveHistoryAccessory) async {
-        let identifier = accessory.historyIdentifier
-        let newValue = accessory.history.history
-        let oldValue = histories[identifier] ?? EveHistory()
+    func add(_ sensor: Sensor) async {
+        guard accessories[sensor.id] == nil else {
+            return
+        }
+        guard let kind = SensorKind(type: sensor.type) else {
+            log?("Unknown sensor type \(sensor.type) of \(sensor.id)")
+            return
+        }
+        let history: EveHistory
         do {
-            try await historyStore.save(newValue, replacing: oldValue, for: identifier)
-            // after a failed save, the next one writes the same entries again
-            histories[identifier] = newValue
+            history = try await store.history(for: sensor.id, fields: kind.historyFields)
         }
         catch {
-            log?("Unable to save history. \(error)")
+            log?("Unable to read history of \(sensor.id). \(error)")
+            history = EveHistory(fields: kind.historyFields)
         }
+        // added while reading the history
+        guard accessories[sensor.id] == nil else {
+            return
+        }
+        let accessory = SensorAccessory(sensor: sensor, kind: kind, history: history)
+        accessory.update(sensor, timeout: timeout)
+        accessories[sensor.id] = accessory
+        hapDevice.addAccessories([accessory])
+        log?("Added \(sensor.id)")
     }
 }
 
@@ -366,33 +257,5 @@ internal extension HAP.Device {
     ) {
         let bridge = Accessory(info: bridgeInfo, type: .bridge, services: services)
         self.init(setupCode: setupCode, storage: storage, accessory: bridge)
-    }
-}
-
-/// Resumes one waiter when the first of several events happens.
-@MainActor
-private final class SyncCompletion {
-    
-    private var isFinished = false
-    
-    private var continuation: CheckedContinuation<Void, Never>?
-    
-    func wait() async {
-        guard isFinished == false else {
-            return
-        }
-        await withCheckedContinuation { continuation = $0 }
-    }
-    
-    /// Returns whether this call finished the wait.
-    @discardableResult
-    func finish() -> Bool {
-        guard isFinished == false else {
-            return false
-        }
-        isFinished = true
-        continuation?.resume()
-        continuation = nil
-        return true
     }
 }
