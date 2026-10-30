@@ -70,7 +70,11 @@ public extension SensorStore {
     }
 
     /// Creates or updates a sensor.
+    ///
+    /// The history reference date is kept, since only ``saveHistory(_:replacing:for:)`` changes it.
     func update(_ sensor: Sensor) async throws {
+        var sensor = sensor
+        sensor.historyReferenceDate = try await database.fetch(Sensor.self, for: sensor.id)?.historyReferenceDate
         try await database.insert(sensor)
         continuation.yield(.sensor(sensor))
     }
